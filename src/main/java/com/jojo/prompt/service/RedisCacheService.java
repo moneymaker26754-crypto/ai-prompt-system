@@ -1,0 +1,50 @@
+package com.jojo.prompt.service;
+
+import com.jojo.prompt.dto.response.PromptVO;
+import com.jojo.prompt.entity.Category;
+
+import java.util.List;
+import java.util.Map;
+
+public interface RedisCacheService {
+
+    //提示词缓存
+    void cachePromptDetail(Long promptId, PromptVO promptVO);
+    PromptVO getPromptDetailCache(Long promptId);
+    void deletePromptCache(Long promptId);
+    void cachePromptNull(Long promptId);
+    boolean isPromptNullCache(Long promptId);
+
+    //计数器操作
+    Long incrementViewCount(Long promptId);
+    Long incrementLikeCount(Long promptId);
+    Long incrementFavoriteCount(Long promptId);
+    Long incrementCopyCount(Long promptId);
+    Long decrementLikeCount(Long promptId);
+    Long decrementFavoriteCount(Long promptId);
+
+    Map<String, Long> getPromptCounts(Long promptId);
+    void syncCountToDb(Long promptId);
+
+    //排行榜操作
+    void updateHotRanking(Long promptId, String rankingType, double score);
+    List<Long> getHotRanking(String rankingType, int topN);
+
+    //搜索热门提示词
+    void incrementSearchKeyWord(String keyword);
+    List<String> getHotSearchKeyWords(int topN);
+
+    //用户行为缓存
+    void addUserLike(Long userId, Long promptId);
+    void removeUserLike(Long userId, Long promptId);
+    boolean isUserLiked(Long userId, Long promptId);
+
+    void addUserFavorite(Long userId, Long promptId);
+    void removeUserFavorite(Long userId, Long promptId);
+    boolean isUserFavorite(Long userId, Long promptId);
+
+    //分类缓存
+    void cacheCategoryList(List<Category> categories);
+    List<Category> getCategoryListCache();
+    void deleteCategoryCache();
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jojo.prompt.mapper.CategoryMapper">
+
+    <resultMap id="CategoryVOMap" type="com.jojo.prompt.dto.response.CategoryVO">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="promptCount" column="prompt_count"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="selectAllCategoriesWithCount" resultMap="CategoryVOMap">
+        SELECT c.id,
+               c.name,
+               c.description,
+               c.sort_order,
+               c.create_time,
+               c.update_time,
+               COUNT(p.id) AS prompt_count
+        FROM category c
+                 LEFT JOIN prompt p
+                           ON p.category_id = c.id
+                               AND p.deleted = 0
+        WHERE c.deleted = 0
+        GROUP BY c.id,
+                 c.name,
+                 c.description,
+                 c.sort_order,
+                 c.create_time,
+                 c.update_time
+        ORDER BY c.sort_order ASC, c.create_time ASC
+    </select>
+
+</mapper>

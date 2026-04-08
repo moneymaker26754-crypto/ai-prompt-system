@@ -1,0 +1,30 @@
+﻿spring:
+  profiles:
+    active: dev
+  application:
+    name: ai-prompt-system
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.commons.JakartaCommonsLoggingImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# 支持枚举类 type-enums-package: com.jojo.prompt.common.constant
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+# 配置knife4j
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
