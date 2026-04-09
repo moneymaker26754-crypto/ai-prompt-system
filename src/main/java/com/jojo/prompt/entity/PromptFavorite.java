@@ -16,9 +16,6 @@ public class PromptFavorite {
 
     private Long promptId;
 
-    @TableLogic
-    private Integer deleted;
-
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 

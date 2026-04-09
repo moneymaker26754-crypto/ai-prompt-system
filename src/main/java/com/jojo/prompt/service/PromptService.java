@@ -24,6 +24,4 @@ public interface PromptService {
     List<PromptVO> getHotList(String type, int limit);
     //复制提示词
     String copyPrompt(Long id);
-    //全文搜索
-
 }

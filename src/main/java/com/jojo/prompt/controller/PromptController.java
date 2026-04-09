@@ -1,7 +1,5 @@
 package com.jojo.prompt.controller;
 
-import com.jojo.prompt.common.constant.PromptStatus;
-import com.jojo.prompt.common.constant.PromptVisibility;
 import com.jojo.prompt.common.result.PageResult;
 import com.jojo.prompt.common.result.Result;
 import com.jojo.prompt.dto.request.PromptCreateDTO;
@@ -15,13 +13,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Validated
 @RestController
@@ -84,15 +80,12 @@ public class PromptController {
     @GetMapping("/hot")
     public Result<List<PromptVO>> queryHotPrompt(
             @Parameter(description = "排行类型：点赞，收藏，浏览量，复制次数")
-            @RequestParam(defaultValue = " updateTime") String type,
+            @RequestParam(defaultValue = "updateTime") String type,
             @Parameter(description = "数量")
             @RequestParam(defaultValue = "10") int limit
     ) {
-        List<Long> hotIds = redisCacheService.getHotRanking(type, limit);
-        //返回热门ids对应的提示词j集合
-        List<PromptVO> hotList = hotIds.stream()
-                .map(promptService::queryPromptById)
-                .collect(Collectors.toList());
+        List<PromptVO> hotList = promptService.getHotList(type, limit);
+        //返回热门ids对应的提示词集合
         return Result.success(hotList);
     }
     //1.5新增

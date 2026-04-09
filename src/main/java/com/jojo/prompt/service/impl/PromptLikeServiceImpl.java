@@ -82,7 +82,6 @@ public class PromptLikeServiceImpl implements PromptLikeService {
             log.info("the prompt has not been liked, idempotent return: userId={}, promptId={}", userId, id);
             return;
         }
-        //逻辑删除
         promptLikeMapper.deleteById(promptLike.getId());
 
         //更新redis计数和用户行为缓存

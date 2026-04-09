@@ -70,7 +70,7 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         } catch (DuplicateKeyException e) {
             log.info("Prompt has been liked concurrently, userId={}, promptId={}", userId, id);
             //补充缓存
-            redisCacheService.addUserLike(userId, id);
+            redisCacheService.addUserFavorite(userId, id);
             return;
         }
 

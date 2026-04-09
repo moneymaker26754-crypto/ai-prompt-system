@@ -59,7 +59,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_VIEW_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
-        updateHotRanking(promptId, "view", count.doubleValue());
+        updateHotRanking(promptId, "view", getDeltaOrZero(key));
         return count;
     }
 
@@ -68,7 +68,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
-        updateHotRanking(promptId, "like", count.doubleValue());
+        updateHotRanking(promptId, "like", getDeltaOrZero(key));
         return count;
     }
 
@@ -77,7 +77,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
-        updateHotRanking(promptId, "favorite", count.doubleValue());
+        updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
         return count;
     }
 
@@ -86,42 +86,34 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_COPY_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
-        updateHotRanking(promptId, "copy", count.doubleValue());
+        updateHotRanking(promptId, "copy", getDeltaOrZero(key));
         return count;
     }
 
     @Override
     public Long decrementLikeCount(Long promptId) {
         String key = PROMPT_LIKE_COUNT + promptId;
-        String current = stringRedisTemplate.opsForValue().get(key);
-        if(current == null) {
-            return 0L;
-        }
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
-        if(count != null &&  count > 0) {
-            stringRedisTemplate.opsForValue().set(key, "0");
-            count = 0L;
-        }
-        updateHotRanking(promptId, "like", count.doubleValue());
+        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        updateHotRanking(promptId, "like", getDeltaOrZero(key));
         return count;
     }
 
     @Override
     public Long decrementFavoriteCount(Long promptId) {
         String key = PROMPT_FAVORITE_COUNT + promptId;
-        String current = stringRedisTemplate.opsForValue().get(key);
-        if (current == null) {
-            return 0L;
-        }
-        Long count = stringRedisTemplate.opsForValue().decrement(key);
-        if (count != null && count < 0) {
-            stringRedisTemplate.opsForValue().set(key, "0");
-            count = 0L;
-        }
-        updateHotRanking(promptId, "favorite", count.doubleValue());
+        Long count = stringRedisTemplate.opsForValue().increment(key, -1);
+        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
         return count;
     }
-
+    private double getDeltaOrZero(String key) {
+        String value = stringRedisTemplate.opsForValue().get(key);
+        if(value == null) {
+            return 0D;
+        }
+        return Double.parseDouble(value);
+    }
     @Override
     public Map<String, Long> getPromptCounts(Long promptId) {
         Map<String, Long> counts = new HashMap<>();

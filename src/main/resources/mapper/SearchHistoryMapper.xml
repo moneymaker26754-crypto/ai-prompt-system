@@ -6,6 +6,7 @@
     <update id="incrementSearchCount">
         update search_history
         set search_count = search_count + 1
+            update_time = noe()
         where id = #{id}
     </update>
 </mapper>

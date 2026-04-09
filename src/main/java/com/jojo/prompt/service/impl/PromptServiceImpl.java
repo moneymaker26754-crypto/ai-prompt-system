@@ -27,7 +27,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -101,7 +103,7 @@ public class PromptServiceImpl implements PromptService {
         redisCacheService.deletePromptCache(id);
     }
 
-    //2.0引入redis，还得加入互斥锁，解决缓存击穿
+    //2.0引入redis，应对缓存穿透
     @Override
     public PromptVO queryPromptById(Long id) {
         Long currentUserId = UserContext.getUserId();
@@ -115,7 +117,10 @@ public class PromptServiceImpl implements PromptService {
             //非本人查询才计数viewCount
             boolean owner = currentUserId != null && currentUserId.equals(cacheVO.getUserId());
             if (!owner) {
-                redisCacheService.incrementViewCount(id);
+                Long latestViewCount = redisCacheService.incrementViewCount(id);
+                if(latestViewCount != null) {
+                    cacheVO.setViewCount(latestViewCount.intValue());
+                }
             }
             //设置补充当前用户的点赞/收藏状态
             if(currentUserId != null) {
@@ -144,13 +149,23 @@ public class PromptServiceImpl implements PromptService {
                 throw new BusinessException(404, "prompt not exist");//隐藏资源存在性
             }
         }
+        PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
         //非本人查询才计数viewCount
         if (!owner) {
-            promptMapper.incrementViewCount(id);
-            prompt = promptMapper.selectById(id);
+//            promptMapper.incrementViewCount(id);
+//            prompt = promptMapper.selectById(id);
+            Long latestViewCount = redisCacheService.incrementViewCount(id);
+            if (latestViewCount != null) {
+                vo.setViewCount(latestViewCount.intValue());
+            }
         }
-
-        PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
+        if(currentUserId != null) {
+            vo.setIsLike(promptLikeService.isLiked(currentUserId, id));
+            vo.setIsFavorite(promptFavoriteService.isFavoritePrompt(currentUserId, id));
+        }else {
+            vo.setIsLike(false);
+            vo.setIsFavorite(false);
+        }
         //只用公开的和启用的用户才能写入缓存
         if(prompt.getVisibility() == PromptVisibility.PUBLIC && prompt.getStatus() ==  PromptStatus.ENABLED) {
             redisCacheService.cachePromptDetail(id, vo);
@@ -188,7 +203,7 @@ public class PromptServiceImpl implements PromptService {
         Page<Prompt> page = new Page<>(pageNo, pageSize);
 
         if(StringUtils.hasText(query.getKeyword())) {
-            return searchWithMyFullText(query, query.getUserId(),pageNo, pageSize);
+            return searchWithMyFullText(query, userId ,pageNo, pageSize);
         }
 
         LambdaQueryWrapper<Prompt> wrapper = buildMyQueryWrapper(query, userId);
@@ -204,27 +219,42 @@ public class PromptServiceImpl implements PromptService {
     }
 
     public List<PromptVO> getHotList(String type, int limit) {
-        LambdaQueryWrapper<Prompt> wrapper = new LambdaQueryWrapper<>();
-        switch (type) {
-            case "like":
-                wrapper.orderByDesc(Prompt::getLikeCount);
-                break;
-            case "favorite":
-                wrapper.orderByDesc(Prompt::getFavoriteCount);
-                break;
-            case "view":
-                wrapper.orderByDesc(Prompt::getViewCount);
-                break;
-            case "copy":
-                wrapper.orderByDesc(Prompt::getCopyCount);
-                break;
-            default:
-                wrapper.orderByDesc(Prompt::getUpdateTime);
+        //2.0不污染热门榜单浏览量的方法
+        List<Long> hotIds = redisCacheService.getHotRanking(type, limit);
+        if(hotIds == null || hotIds.isEmpty()) {
+            return Collections.emptyList();
         }
-        wrapper.last("limit " + limit);
-        List<Prompt> prompts = promptMapper.selectList(wrapper);
-        return promptConverter.toVOList(prompts);
 
+        Long currentUserId = UserContext.getUserId();
+        return hotIds.stream()
+                .map(promptMapper::selectById)
+                .filter(prompt -> prompt != null
+                && prompt.getVisibility() == PromptVisibility.PUBLIC
+                && prompt.getStatus() == PromptStatus.ENABLED)
+                .map(prompt -> {
+                    PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
+                    Map<String, Long> counts = redisCacheService.getPromptCounts(prompt.getId());
+                    vo.setViewCount(mergeCount(prompt.getViewCount(), counts.get("viewCount")));
+                    vo.setLikeCount(mergeCount(prompt.getLikeCount(), counts.get("likeCount")));
+                    vo.setFavoriteCount(mergeCount(prompt.getFavoriteCount(), counts.get("favoriteCount")));
+                    vo.setCopyCount(mergeCount(prompt.getCopyCount(), counts.get("copyCount")));
+
+                    if (currentUserId != null) {
+                        vo.setIsLike(redisCacheService.isUserLiked(currentUserId, prompt.getId()));
+                        vo.setIsFavorite(redisCacheService.isUserFavorite(currentUserId, prompt.getId()));
+                    } else {
+                        vo.setIsLike(false);
+                        vo.setIsFavorite(false);
+                    }
+                    return vo;
+                })
+                .collect(Collectors.toList());
+
+    }
+    //计数器的下限保护
+    private int mergeCount(Integer base, Long delta) {
+        int result = (base == null ? 0 : base) + (delta == null ? 0 : delta.intValue());
+        return Math.max(result, 0);
     }
 
     public String copyPrompt(Long id) {
@@ -306,10 +336,10 @@ public class PromptServiceImpl implements PromptService {
                 voList
         );
     }
-    //公共搜索
+    //1.5关键词的索引进行全文搜索，z公共搜索
     private PageResult<PromptVO> searchPublicWithFullText(PromptQueryDTO query, int pageNo, int pageSize) {
         Page<Prompt> page = new Page<>(pageNo, pageSize);
-        Page<Prompt> promptPage = promptMapper.searchPublicFullText(page, query.getKeyword(), query.getVisibility(), query.getStatus());
+        Page<Prompt> promptPage = promptMapper.searchPublicFullText(page, query.getKeyword(), PromptVisibility.PUBLIC, PromptStatus.ENABLED);
         List<PromptVO> voList = fillFavoriteAndLikeStatus(promptPage.getRecords());
         return PageResult.of(
                 promptPage.getCurrent(),

@@ -37,22 +37,21 @@ public class AuthInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         UserContext.clear();
     }
+
     //精确白名单
     private boolean isPublicEndpoint(String method, String uri) {
         if (!HttpMethod.GET.matches(method)) {
             return false;
         }
 
-        if ("/api/prompts/page".equals(uri)) {
+        if ("/api/prompts/page".equals(uri)
+                ||"/api/prompts/hot".equals(uri)
+                ||"api/search/hot".equals(uri)
+                || "/api/categories/list".equals(uri)
+                || "/api/categories/list-with-count".equals(uri)) {
             return true;
         }
-        if ("/api/categories".equals(uri) || "/api/categories/with-count".equals(uri)) {
-            return true;
-        }
-        if (isPromptDetail(uri) || isCategoryDetail(uri)) {
-            return true;
-        }
-        return false;
+        return isPromptDetail(uri) || isCategoryDetail(uri);
     }
 
     private boolean isPromptDetail(String uri) {
