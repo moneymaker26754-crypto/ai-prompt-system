@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 @Slf4j
 @Component
+//自动注入createtime和updatetime
 public class MetaObjectHandlerConfig implements MetaObjectHandler {
 
 

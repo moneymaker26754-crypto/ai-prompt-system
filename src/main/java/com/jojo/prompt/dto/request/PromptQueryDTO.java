@@ -3,6 +3,7 @@ package com.jojo.prompt.dto.request;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
@@ -27,9 +28,17 @@ public class PromptQueryDTO {
     @Schema(description = "用户ID")
     private Long userId;
 
-    @Schema(description = "排序字段（createTime/viewCount/copyCount）")
+    @Pattern(
+            regexp = "^(createTime|viewCount|copyCount)$",
+            message = "排序字段必须为: createTime, viewCount, copyCount"
+    )
+    @Schema(description = "排序字段(createTime/viewCount/copyCount)")
     private String sortField = "createTime";
 
-    @Schema(description = "排序方式（asc/desc）")
+    @Pattern(
+            regexp = "^(asc|desc)$",
+            message = "排序方式必须是asc或desc"
+    )
+    @Schema(description = "排序方式(asc/desc)")
     private String sortOrder = "desc";
 }

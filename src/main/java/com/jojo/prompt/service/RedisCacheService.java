@@ -5,6 +5,7 @@ import com.jojo.prompt.entity.Category;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface RedisCacheService {
 
@@ -25,6 +26,10 @@ public interface RedisCacheService {
 
     Map<String, Long> getPromptCounts(Long promptId);
     void syncCountToDb(Long promptId);
+    //应对计数脏读问题
+    void addDirtyPromptId(Long promptId);
+    Set<Long> getDirtyPromptId();
+    void removeDirtyPromptId(Set<Long> promptIds);
 
     //排行榜操作
     void updateHotRanking(Long promptId, String rankingType, double score);

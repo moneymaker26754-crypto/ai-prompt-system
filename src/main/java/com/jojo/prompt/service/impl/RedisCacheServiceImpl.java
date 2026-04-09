@@ -59,6 +59,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_VIEW_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "view", getDeltaOrZero(key));
         return count;
     }
@@ -68,6 +69,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "like", getDeltaOrZero(key));
         return count;
     }
@@ -77,6 +79,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
         return count;
     }
@@ -86,6 +89,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_COPY_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "copy", getDeltaOrZero(key));
         return count;
     }
@@ -95,6 +99,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "like", getDeltaOrZero(key));
         return count;
     }
@@ -104,6 +109,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        addDirtyPromptId(promptId);
         updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
         return count;
     }
@@ -149,6 +155,36 @@ public class RedisCacheServiceImpl implements RedisCacheService {
                 PROMPT_FAVORITE_COUNT + promptId,
                 PROMPT_COPY_COUNT + promptId
         ));
+    }
+
+    @Override
+    public void addDirtyPromptId(Long promptId) {
+        stringRedisTemplate.opsForSet().add(PROMPT_COUNT_DIRTY_SET, promptId.toString());
+        stringRedisTemplate.expire(PROMPT_COUNT_DIRTY_SET, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public Set<Long> getDirtyPromptId() {
+        Set<String> members = stringRedisTemplate.opsForSet().members(PROMPT_COUNT_DIRTY_SET);
+        if(members == null || members.isEmpty()) {
+            return Collections.emptySet();
+        }
+        return members.stream()
+                .map(Long::parseLong)
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public void removeDirtyPromptId(Set<Long> promptIds) {
+        if(promptIds == null || promptIds.isEmpty()) {
+            return;
+        }
+        stringRedisTemplate.opsForSet().remove(
+                PROMPT_COUNT_DIRTY_SET,
+                promptIds.stream()
+                .map(String::valueOf)
+                .toArray(String[]::new));
+
     }
 
     @Override

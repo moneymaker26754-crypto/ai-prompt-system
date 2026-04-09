@@ -46,7 +46,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
         if ("/api/prompts/page".equals(uri)
                 ||"/api/prompts/hot".equals(uri)
-                ||"api/search/hot".equals(uri)
+                ||"/api/search/hot".equals(uri)
                 || "/api/categories/list".equals(uri)
                 || "/api/categories/list-with-count".equals(uri)) {
             return true;

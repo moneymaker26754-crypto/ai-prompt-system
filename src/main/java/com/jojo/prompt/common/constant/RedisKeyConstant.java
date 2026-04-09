@@ -57,4 +57,8 @@ public interface RedisKeyConstant {
     long HOT_CACHE_EXPIRE_5MIN = 5 * 60 + ThreadLocalRandom.current().nextInt(300);
     //限流过期时间
     long RATE_LIMIT_EXPIRE_1MIN = 60 + ThreadLocalRandom.current().nextInt(300);
+
+
+    //应对计数脏读问题
+    String PROMPT_COUNT_DIRTY_SET = "prompt:count:dirty:";
 }
