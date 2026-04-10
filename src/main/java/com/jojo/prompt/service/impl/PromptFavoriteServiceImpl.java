@@ -2,15 +2,11 @@ package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.jojo.prompt.common.constant.PromptStatus;
-import com.jojo.prompt.common.constant.PromptVisibility;
-import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
-import com.jojo.prompt.common.utils.UserContext;
 import com.jojo.prompt.converter.PromptConverter;
+import com.jojo.prompt.dto.response.PromptFavoriteListItem;
 import com.jojo.prompt.dto.response.PromptFavoriteVO;
 import com.jojo.prompt.dto.response.PromptVO;
-import com.jojo.prompt.entity.Category;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptFavorite;
 import com.jojo.prompt.mapper.CategoryMapper;
@@ -24,8 +20,9 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -37,14 +34,15 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
     private final CategoryMapper categoryMapper;
     private final PromptConverter promptConverter;
     private final RedisCacheService redisCacheService;
+    private final PromptPermissionService promptPermissionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void favoritePrompt(Long id) {
         //获取用户id
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         //提示词是否存在
-        Prompt prompt = validatePromptExists(id, userId);
+        Prompt prompt = promptPermissionService.validatePromptExists(id, userId);
         //查询缓存
         if(redisCacheService.isUserFavorite(userId, id)){
             log.info("Prompt has been favorite, idempotent return: userId={}, promptId={}", userId, id);
@@ -83,7 +81,7 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unfavoritePrompt(Long id) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         //查询收藏记录
         PromptFavorite favorite = promptFavoriteMapper.selectOne(
                 new LambdaQueryWrapper<PromptFavorite>()
@@ -111,35 +109,38 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
     @Override
     public PageResult<PromptFavoriteVO> queryMyFavoritePrompt(int pageNo, int pageSize) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         //分页查询收藏记录
-        Page<PromptFavorite> page = new Page<>(pageNo, pageSize);
-        LambdaQueryWrapper<PromptFavorite> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(PromptFavorite::getUserId, userId)
-                .orderByDesc(PromptFavorite::getCreateTime);//按时间倒序
-        Page<PromptFavorite> favoritePage = promptFavoriteMapper.selectPage(page, wrapper);
+        Page<PromptFavoriteListItem> page = new Page<>(pageNo, pageSize);
+        //一次返回全部结果，防止N+1问题
+        Page<PromptFavoriteListItem> favoritePage = promptFavoriteMapper.selectMyFavoritePromptPage(page, userId);
         //查询提示词详细
         List<PromptFavoriteVO> voList = favoritePage.getRecords().stream()
-                .map(favorite -> {
-                    //查询提示词
-                    Prompt prompt = promptMapper.selectById(favorite.getPromptId());
-                    if(prompt == null) {
-                        return null;//提示词已被删除
+                .map(item -> {
+                    PromptVO promptVO = new PromptVO();
+                    promptVO.setId(item.getPromptId());
+                    promptVO.setTitle(item.getTitle());
+                    promptVO.setContent(item.getContent());
+                    promptVO.setViewCount(item.getViewCount());
+                    promptVO.setLikeCount(item.getLikeCount());
+                    promptVO.setFavoriteCount(item.getFavoriteCount());
+                    promptVO.setCopyCount(item.getCopyCount());
+                    promptVO.setUserId(item.getUserId());
+                    promptVO.setCategoryId(item.getCategoryId());
+                    promptVO.setCategoryName(item.getCategoryName());
+                    promptVO.setIsFavorite(true);
+                    if(item.getTags() != null && !item.getTags().isBlank()) {
+                        promptVO.setTagList(Arrays.asList(item.getTags().split(",")));
+                    }else {
+                        promptVO.setTagList(Collections.emptyList());
                     }
-                    //查询分类
-                    Category category = categoryMapper.selectById(prompt.getCategoryId());
-                    //转换为VO
-                    PromptVO promptVO = promptConverter.toVO(prompt, category);
-                    promptVO.setIsFavorite(true);//都是已收藏的
-                    //组装收藏VO
                     PromptFavoriteVO vo = new PromptFavoriteVO();
-                    vo.setFavoriteId(favorite.getId());
+                    vo.setFavoriteId(item.getFavoriteId());
+                    vo.setFavoriteTime(item.getFavoriteTime());
                     vo.setPromptVO(promptVO);
-                    vo.setFavoriteTime(favorite.getCreateTime());
                     return vo;
                 })
-                .filter(vo -> vo != null)//过滤掉已删除的提示词
-                .collect(Collectors.toList());
+                .toList();
 
         return PageResult.of(
                 favoritePage.getCurrent(),
@@ -169,31 +170,4 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         return count > 0;
     }
 
-    //权限检查，查看是否登录
-    private Long requireCurrentUserId() {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            throw new BusinessException(401, "not logged in, please log in first");
-        }
-        return userId;
-    }
-
-    //提示词，用户状态和可见性检查
-    private Prompt validatePromptExists(Long promptId, Long userId) {
-        Prompt prompt = promptMapper.selectById(promptId);
-        if (prompt == null) {
-            throw new BusinessException("prompt not exist");
-        }
-        if (prompt.getStatus() != PromptStatus.ENABLED) {
-            throw new BusinessException("prompt not exist");
-        }
-        if (prompt.getVisibility() == PromptVisibility.PRIVATE
-                && !userId.equals(prompt.getUserId())) {
-            throw new BusinessException(403, "no permission to favorite this prompt");
-        }
-        if (userId.equals(prompt.getUserId())) {
-            throw new BusinessException(400, "cannot favorite your own prompt");
-        }
-        return prompt;
-    }
 }

@@ -1,14 +1,12 @@
 package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.jojo.prompt.common.utils.UserContext;
 import com.jojo.prompt.entity.SearchHistory;
 import com.jojo.prompt.mapper.SearchHistoryMapper;
 import com.jojo.prompt.service.RedisCacheService;
 import com.jojo.prompt.service.SearchHistoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.el.lang.LambdaExpressionNestedState;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -23,6 +21,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
 
     private final SearchHistoryMapper searchHistoryMapper;
     private final RedisCacheService redisCacheService;
+    private PromptPermissionService promptPermissionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -34,7 +33,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
         //记录热门搜索词到redis
         redisCacheService.incrementSearchKeyWord(keyword);
         //登录后可查看
-        Long userId = UserContext.getUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         if (userId == null) {
             return;
         }
@@ -57,7 +56,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
 
     @Override
     public List<String> queryMyHistory() {
-        Long userId = UserContext.getUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         List<SearchHistory> histories = searchHistoryMapper.selectList(
                 new LambdaQueryWrapper<SearchHistory>()
                         .eq(SearchHistory::getUserId, userId)
@@ -71,7 +70,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
 
     @Override
     public void clearHistory() {
-        Long userId = UserContext.getUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         searchHistoryMapper.delete(
                 new LambdaQueryWrapper<SearchHistory>()
                         .eq(SearchHistory::getUserId, userId)
@@ -83,4 +82,5 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
     public List<String> getHotSearchKeywords() {
         return redisCacheService.getHotSearchKeyWords(10);
     }
+
 }

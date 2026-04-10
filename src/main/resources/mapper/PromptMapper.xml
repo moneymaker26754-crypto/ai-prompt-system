@@ -40,8 +40,10 @@
     </update>
     <update id="incrementCounts">
         update prompt
-        set view_count = view_count + #{viewCount}, like_count = like_count + #{likeCount},
-            favorite_count = favorite_count + #{favoriteCount}, copy_count = copy_count + #{copyCount}
+        set view_count = coalesce(view_count, 0) + #{viewCount},
+            like_count = coalesce(like_count, 0) + #{likeCount},
+            favorite_count = coalesce(favorite_count, 0) + #{favoriteCount},
+            copy_count = coalesce(copy_count, 0) + #{copyCount}
         where id = #{promptId}
     </update>
     <select id="searchMyFullText" resultType="com.jojo.prompt.entity.Prompt">

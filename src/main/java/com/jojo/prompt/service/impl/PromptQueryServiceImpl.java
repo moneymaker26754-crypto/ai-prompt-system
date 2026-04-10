@@ -1,110 +1,50 @@
 package com.jojo.prompt.service.impl;
 
-import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
-import com.jojo.prompt.common.utils.UserContext;
 import com.jojo.prompt.converter.PromptConverter;
-import com.jojo.prompt.dto.request.PromptCreateDTO;
 import com.jojo.prompt.dto.request.PromptQueryDTO;
-import com.jojo.prompt.dto.request.PromptUpdateDTO;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Category;
 import com.jojo.prompt.entity.Prompt;
-import com.jojo.prompt.entity.PromptFavorite;
-import com.jojo.prompt.entity.PromptLike;
 import com.jojo.prompt.mapper.CategoryMapper;
-import com.jojo.prompt.mapper.PromptFavoriteMapper;
-import com.jojo.prompt.mapper.PromptLikeMapper;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class PromptServiceImpl implements PromptService {
+public class PromptQueryServiceImpl implements PromptQueryService {
 
     private final PromptMapper promptMapper;
     private final CategoryMapper categoryMapper;
-    private final PromptConverter promptConverter;
-    private final PromptFavoriteService promptFavoriteService;
-    private final PromptFavoriteMapper promptFavoriteMapper;
     private final PromptLikeService promptLikeService;
-    private final PromptLikeMapper promptLikeMapper;
+    private final PromptFavoriteService promptFavoriteService;
     private final SearchHistoryService searchHistoryService;
+    private final PromptConverter promptConverter;
     private final RedisCacheService redisCacheService;
+    private final PromptInteractionAssembler promptInteractionAssembler;
+    private final PromptPermissionService promptPermissionService;
 
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public Long createPrompt(PromptCreateDTO dto) {
-        Long userId = requireCurrentUserId();
-        validateCategoryExists(dto.getCategoryId());
-
-        Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
-        prompt.setUserId(userId);
-        prompt.setStatus(PromptStatus.ENABLED);
-        prompt.setViewCount(0);
-        prompt.setCopyCount(0);
-        prompt.setVersion(1);
-
-        promptMapper.insert(prompt);
-        return prompt.getId();
-    }
-
-    @Override
-    public void updatePrompt(PromptUpdateDTO dto) {
-        Prompt existing = promptMapper.selectById(dto.getId());
-        if (existing == null) {
-            throw new BusinessException("prompt not exist");
-        }
-
-        Long userId = requireCurrentUserId();
-        if (!userId.equals(existing.getUserId())) {
-            throw new BusinessException(403, "no permission to modify this prompt");
-        }
-        validateCategoryExists(dto.getCategoryId());
-
-        Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
-        int rows = promptMapper.updateById(prompt);
-        if (rows == 0) {
-            throw new BusinessException("prompt has been modified by another user");
-        }
-        //删除缓存
-        redisCacheService.deletePromptCache(dto.getId());
-    }
-
-    @Override
-    public void deletePrompt(Long id) {
-        Prompt prompt = promptMapper.selectById(id);
-        if (prompt == null) {
-            throw new BusinessException("prompt not exist");
-        }
-
-        Long userId = requireCurrentUserId();
-        if (!userId.equals(prompt.getUserId())) {
-            throw new BusinessException(403, "no permission to delete this prompt");
-        }
-        promptMapper.deleteById(id);
-        //删除缓存
-        redisCacheService.deletePromptCache(id);
-    }
 
     //2.0引入redis，应对缓存穿透
     @Override
     public PromptVO queryPromptById(Long id) {
-        Long currentUserId = UserContext.getUserId();
+        Long currentUserId = promptPermissionService.requireCurrentUserId();
         if (redisCacheService.isPromptNullCache(id)) {
             throw new BusinessException(404, "prompt not exist");
         }
@@ -115,13 +55,11 @@ public class PromptServiceImpl implements PromptService {
             //非本人查询才计数viewCount
             boolean owner = currentUserId != null && currentUserId.equals(cacheVO.getUserId());
             if (!owner) {
-                Long latestViewCount = redisCacheService.incrementViewCount(id);
-                if (latestViewCount != null) {
-                    cacheVO.setViewCount(latestViewCount.intValue());
-                }
+                redisCacheService.incrementViewCount(id);
+                promptInteractionAssembler.mergeRedisCountsToVO(cacheVO, id);
             }
             //统一count计数
-            mergeRedisCountsToVO(cacheVO, id);
+            promptInteractionAssembler.mergeRedisCountsToVO(cacheVO, id);
             //设置补充当前用户的点赞/收藏状态
             if (currentUserId != null) {
                 cacheVO.setIsLike(redisCacheService.isUserLiked(currentUserId, id));
@@ -152,14 +90,9 @@ public class PromptServiceImpl implements PromptService {
         PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
         //非本人查询才计数viewCount
         if (!owner) {
-//            promptMapper.incrementViewCount(id);
-//            prompt = promptMapper.selectById(id);
-            Long latestViewCount = redisCacheService.incrementViewCount(id);
-            if (latestViewCount != null) {
-                vo.setViewCount(latestViewCount.intValue());
-            }
+            redisCacheService.incrementViewCount(id);
+            promptInteractionAssembler.mergeRedisCountsToVO(vo, id);
         }
-        mergeRedisCountsToVO(vo, id);
         if (currentUserId != null) {
             vo.setIsLike(promptLikeService.isLiked(currentUserId, id));
             vo.setIsFavorite(promptFavoriteService.isFavoritePrompt(currentUserId, id));
@@ -188,7 +121,7 @@ public class PromptServiceImpl implements PromptService {
         LambdaQueryWrapper<Prompt> wrapper = buildPublicQueryWrapper(query);
         Page<Prompt> promptPage = promptMapper.selectPage(page, wrapper);
 
-        List<PromptVO> voList = fillFavoriteAndLikeStatus(promptPage.getRecords());
+        List<PromptVO> voList = promptInteractionAssembler.fillFavoriteAndLikeStatus(promptPage.getRecords());
 
         return PageResult.of(
                 promptPage.getCurrent(),
@@ -200,7 +133,7 @@ public class PromptServiceImpl implements PromptService {
 
     @Override
     public PageResult<PromptVO> queryMyPage(PromptQueryDTO query, Integer pageNo, Integer pageSize) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         Page<Prompt> page = new Page<>(pageNo, pageSize);
 
         if (StringUtils.hasText(query.getKeyword())) {
@@ -210,7 +143,7 @@ public class PromptServiceImpl implements PromptService {
         LambdaQueryWrapper<Prompt> wrapper = buildMyQueryWrapper(query, userId);
 
         Page<Prompt> promptPage = promptMapper.selectPage(page, wrapper);
-        List<PromptVO> voList = fillFavoriteAndLikeStatus(promptPage.getRecords());
+        List<PromptVO> voList = promptInteractionAssembler.fillFavoriteAndLikeStatus(promptPage.getRecords());
         return PageResult.of(
                 promptPage.getCurrent(),
                 promptPage.getSize(),
@@ -226,32 +159,6 @@ public class PromptServiceImpl implements PromptService {
             return Collections.emptyList();
         }
 
-        Long currentUserId = UserContext.getUserId();
-
-//        //N + 1 问题
-//        return hotIds.stream()
-//                .map(promptMapper::selectById)
-//                .filter(prompt -> prompt != null
-//                && prompt.getVisibility() == PromptVisibility.PUBLIC
-//                && prompt.getStatus() == PromptStatus.ENABLED)
-//                .map(prompt -> {
-//                    PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
-//                    Map<String, Long> counts = redisCacheService.getPromptCounts(prompt.getId());
-//                    vo.setViewCount(mergeCount(prompt.getViewCount(), counts.get("viewCount")));
-//                    vo.setLikeCount(mergeCount(prompt.getLikeCount(), counts.get("likeCount")));
-//                    vo.setFavoriteCount(mergeCount(prompt.getFavoriteCount(), counts.get("favoriteCount")));
-//                    vo.setCopyCount(mergeCount(prompt.getCopyCount(), counts.get("copyCount")));
-//
-//                    if (currentUserId != null) {
-//                        vo.setIsLike(redisCacheService.isUserLiked(currentUserId, prompt.getId()));
-//                        vo.setIsFavorite(redisCacheService.isUserFavorite(currentUserId, prompt.getId()));
-//                    } else {
-//                        vo.setIsLike(false);
-//                        vo.setIsFavorite(false);
-//                    }
-//                    return vo;
-//                })
-//                .collect(Collectors.toList());
         List<Prompt> prompts = promptMapper.selectByIds(hotIds);
         if (prompts == null || prompts.isEmpty()) {
             return Collections.emptyList();
@@ -264,7 +171,7 @@ public class PromptServiceImpl implements PromptService {
 
         List<Long> orderPromptIds = hotIds.stream()
                 .filter(promptMap::containsKey)
-                .collect(Collectors.toList());
+                .toList();
         if(orderPromptIds.isEmpty()) {
             return Collections.emptyList();
         }
@@ -282,89 +189,16 @@ public class PromptServiceImpl implements PromptService {
                 .collect(Collectors.toList());
         List<PromptVO> voList = orderPrompts.stream()
                 .map(prompt -> {
+                    Category category = categoryMap.get(prompt.getCategoryId());
                     PromptVO vo = promptConverter.toVO(prompt);
-                    mergeRedisCountsToVO(vo, prompt.getId());
+                    promptInteractionAssembler.mergeRedisCountsToVO(vo, prompt.getId());
                     return vo;
                 }).collect(Collectors.toList());
 
-        fillUserStatus(voList, orderPrompts);
+        promptInteractionAssembler.fillUserStatus(voList, orderPrompts);
         return voList;
     }
 
-    //计数器的下限保护
-    private int mergeCount(Integer base, Long delta) {
-        int result = (base == null ? 0 : base) + (delta == null ? 0 : delta.intValue());
-        return Math.max(result, 0);
-    }
-
-    private void mergeRedisCountsToVO(PromptVO vo, Long promptId) {
-        Map<String, Long> counts = redisCacheService.getPromptCounts(promptId);
-        vo.setViewCount(mergeCount(vo.getViewCount(), counts.get("viewCount")));
-        vo.setLikeCount(mergeCount(vo.getLikeCount(), counts.get("likeCount")));
-        vo.setFavoriteCount(mergeCount(vo.getFavoriteCount(), counts.get("favoriteCount")));
-        vo.setCopyCount(mergeCount(vo.getCopyCount(), counts.get("copyCount")));
-    }
-
-    private void fillUserStatus(List<PromptVO> voList, List<Prompt> prompts) {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            voList.forEach(v -> v.setIsFavorite(false));
-            voList.forEach(v -> v.setIsLike(false));
-            return;
-        }
-
-        List<Long> promptIds = prompts.stream()
-                .map(Prompt::getId)
-                .collect(Collectors.toList());
-        if (promptIds.isEmpty()) {
-            voList.forEach(v -> v.setIsFavorite(false));
-            voList.forEach(v -> v.setIsLike(false));
-            return;
-        }
-
-        List<PromptFavorite> favorites = promptFavoriteMapper.selectList(
-                new LambdaQueryWrapper<PromptFavorite>()
-                        .eq(PromptFavorite::getUserId, userId)
-                        .in(PromptFavorite::getPromptId, promptIds)
-        );
-        List<PromptLike> likes = promptLikeMapper.selectList(
-                new LambdaQueryWrapper<PromptLike>()
-                        .eq(PromptLike::getUserId, userId)
-                        .in(PromptLike::getPromptId, promptIds)
-        );
-
-        Set<Long> favoriteIds = favorites.stream()
-                .map(PromptFavorite::getPromptId)
-                .collect(Collectors.toSet());
-        Set<Long> likeIds = likes.stream()
-                .map(PromptLike::getPromptId)
-                .collect(Collectors.toSet());
-
-        voList.forEach(v -> v.setIsFavorite(favoriteIds.contains(v.getId())));
-        voList.forEach(v -> v.setIsLike(likeIds.contains(v.getId())));
-    }
-
-    public String copyPrompt(Long id) {
-        Prompt prompt = promptMapper.selectById(id);
-        if (prompt == null) {
-            throw new BusinessException(404, "prompt not exist");
-        }
-        Long currentUserId = requireCurrentUserId();
-        boolean owner = currentUserId != null && currentUserId.equals(prompt.getUserId());
-        if (!owner) {
-            if (prompt.getStatus() != PromptStatus.ENABLED) {
-                throw new BusinessException(404, "prompt not exist");
-            }
-            if (prompt.getVisibility() != PromptVisibility.PUBLIC) {
-                throw new BusinessException(404, "prompt not exist");
-            }
-        }
-        redisCacheService.incrementCopyCount(id);
-
-        log.info("copy prompt success: promptId:{}, copyCount:{}", id, prompt.getCopyCount());
-        return prompt.getContent();
-
-    }
 
     //辅助查询条件公共的分页逻辑
     public LambdaQueryWrapper<Prompt> buildPublicQueryWrapper(PromptQueryDTO query) {
@@ -416,7 +250,7 @@ public class PromptServiceImpl implements PromptService {
     private PageResult<PromptVO> searchWithMyFullText(PromptQueryDTO query, Long userId, int pageNo, int pageSize) {
         Page<Prompt> page = new Page<>(pageNo, pageSize);
         Page<Prompt> promptPage = promptMapper.searchMyFullText(page, userId, query.getKeyword());
-        List<PromptVO> voList = fillFavoriteAndLikeStatus(promptPage.getRecords());
+        List<PromptVO> voList = promptInteractionAssembler.fillFavoriteAndLikeStatus(promptPage.getRecords());
         return PageResult.of(
                 promptPage.getCurrent(),
                 promptPage.getSize(),
@@ -429,46 +263,12 @@ public class PromptServiceImpl implements PromptService {
     private PageResult<PromptVO> searchPublicWithFullText(PromptQueryDTO query, int pageNo, int pageSize) {
         Page<Prompt> page = new Page<>(pageNo, pageSize);
         Page<Prompt> promptPage = promptMapper.searchPublicFullText(page, query.getKeyword(), PromptVisibility.PUBLIC, PromptStatus.ENABLED);
-        List<PromptVO> voList = fillFavoriteAndLikeStatus(promptPage.getRecords());
+        List<PromptVO> voList = promptInteractionAssembler.fillFavoriteAndLikeStatus(promptPage.getRecords());
         return PageResult.of(
                 promptPage.getCurrent(),
                 promptPage.getSize(),
                 promptPage.getTotal(),
                 voList
         );
-    }
-
-    //辅助收藏和点赞分页逻辑,2.0改进
-    private List<PromptVO> fillFavoriteAndLikeStatus(List<Prompt> prompts) {
-        if(prompts == null || prompts.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<PromptVO> voList = promptConverter.toVOList(prompts);
-        Map<Long, PromptVO> voMap = voList.stream().collect(Collectors.toMap(PromptVO::getId, vo -> vo));
-
-        prompts.forEach(prompt -> {
-            PromptVO vo = voMap.get(prompt.getId());
-            if(vo != null) {
-                mergeRedisCountsToVO(vo, prompt.getId());
-            }
-        });
-        fillUserStatus(voList, prompts);
-        return voList;
-    }
-
-    //辅助用于获取当前用户ID，检查登陆状态
-    private Long requireCurrentUserId() {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            throw new BusinessException(401, "not logged in, please log in first");
-        }
-        return userId;
-    }
-
-    //校验分类状态
-    private void validateCategoryExists(Long categoryId) {
-        if (categoryMapper.selectById(categoryId) == null) {
-            throw new BusinessException("category not exist");
-        }
     }
 }

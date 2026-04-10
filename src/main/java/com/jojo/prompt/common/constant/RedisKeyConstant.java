@@ -61,4 +61,8 @@ public interface RedisKeyConstant {
 
     //应对计数脏读问题
     String PROMPT_COUNT_DIRTY_SET = "prompt:count:dirty:";
+    public static final String PROMPT_VIEW_COUNT_PROCESSING = "prompt:view:processing:";
+    public static final String PROMPT_LIKE_COUNT_PROCESSING = "prompt:like:processing:";
+    public static final String PROMPT_FAVORITE_COUNT_PROCESSING = "prompt:favorite:processing:";
+    public static final String PROMPT_COPY_COUNT_PROCESSING = "prompt:copy:processing:";
 }

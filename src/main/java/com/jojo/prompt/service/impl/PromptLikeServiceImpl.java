@@ -1,10 +1,6 @@
 package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.jojo.prompt.common.constant.PromptStatus;
-import com.jojo.prompt.common.constant.PromptVisibility;
-import com.jojo.prompt.common.exception.BusinessException;
-import com.jojo.prompt.common.utils.UserContext;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptLike;
 import com.jojo.prompt.mapper.PromptLikeMapper;
@@ -23,16 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class PromptLikeServiceImpl implements PromptLikeService {
 
     private final PromptLikeMapper promptLikeMapper;
-    private final PromptMapper promptMapper;
     private final RedisCacheService redisCacheService;
+    private final PromptPermissionService promptPermissionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void likePrompt(Long id) {
         //获取当前用户
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         //校验提示词
-        Prompt prompt = validatePromptExists(id, userId);
+        Prompt prompt = promptPermissionService.validatePromptExists(id, userId);
         //查询缓存
         if(redisCacheService.isUserLiked(userId, id)) {
             log.info("Prompt has been liked, idempotent return: userId={}, promptId={}", userId, id);
@@ -71,7 +67,7 @@ public class PromptLikeServiceImpl implements PromptLikeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void unLikePrompt(Long id) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         //查询喜欢记录
         PromptLike promptLike = promptLikeMapper.selectOne(
                 new LambdaQueryWrapper<PromptLike>()
@@ -114,31 +110,4 @@ public class PromptLikeServiceImpl implements PromptLikeService {
     }
 
 
-    //辅助权限检查，查看是否登录
-    private Long requireCurrentUserId() {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            throw new BusinessException(401, "not logged in, please log in first");
-        }
-        return userId;
-    }
-
-    //提示词，用户状态和可见性检查
-    private Prompt validatePromptExists(Long promptId, Long userId) {
-        Prompt prompt = promptMapper.selectById(promptId);
-        if (prompt == null) {
-            throw new BusinessException("prompt not exist");
-        }
-        if (prompt.getStatus() != PromptStatus.ENABLED) {
-            throw new BusinessException("prompt not exist");
-        }
-        if (prompt.getVisibility() == PromptVisibility.PRIVATE
-                && !userId.equals(prompt.getUserId())) {
-            throw new BusinessException(403, "no permission to like this prompt");
-        }
-        if (userId.equals(prompt.getUserId())) {
-            throw new BusinessException(400, "cannot like your own prompt");
-        }
-        return prompt;
-    }
 }

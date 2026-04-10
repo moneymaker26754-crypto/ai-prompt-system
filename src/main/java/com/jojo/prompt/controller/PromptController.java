@@ -6,9 +6,8 @@ import com.jojo.prompt.dto.request.PromptCreateDTO;
 import com.jojo.prompt.dto.request.PromptQueryDTO;
 import com.jojo.prompt.dto.request.PromptUpdateDTO;
 import com.jojo.prompt.dto.response.PromptVO;
-import com.jojo.prompt.mapper.PromptMapper;
-import com.jojo.prompt.service.PromptService;
-import com.jojo.prompt.service.RedisCacheService;
+import com.jojo.prompt.entity.Prompt;
+import com.jojo.prompt.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,35 +27,34 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "提示词", description = "提示词管理接口")
 public class PromptController {
-    private final PromptService promptService;
-    private final PromptMapper promptMapper;
-    private final RedisCacheService redisCacheService;
 
+    private final PromptCommandService promptCommandService;
+    private final PromptQueryService promptQueryService;
     @Operation(summary = "创建提示词")
     @PostMapping
     public Result<Long> createPrompt(@RequestBody @Valid PromptCreateDTO dto) {
-        Long id = promptService.createPrompt(dto);
+        Long id = promptCommandService.createPrompt(dto);
         return Result.success("create success", id);
     }
 
     @Operation(summary = "更新提示词")
     @PutMapping
     public Result<Void> updatePrompt(@RequestBody @Valid PromptUpdateDTO dto) {
-        promptService.updatePrompt(dto);
+        promptCommandService.updatePrompt(dto);
         return Result.success("update success", null);
     }
 
     @Operation(summary = "删除提示词")
     @DeleteMapping("/{id}")
     public Result<Void> deletePrompt(@Parameter(description = "提示词ID") @PathVariable("id") Long id) {
-        promptService.deletePrompt(id);
+        promptCommandService.deletePrompt(id);
         return Result.success("delete success", null);
     }
 
     @Operation(summary = "获取提示词详细")
     @GetMapping("/{id}")
     public Result<PromptVO> queryPromptById(@Parameter(description = "提示词ID") @PathVariable("id") Long id) {
-        PromptVO promptVO = promptService.queryPromptById(id);
+        PromptVO promptVO = promptQueryService.queryPromptById(id);
         return Result.success(promptVO);
     }
 
@@ -70,7 +68,7 @@ public class PromptController {
                                                   @RequestParam(defaultValue = "10")
                                                   @Min(value = 1, message = "至少显示一条数据")
                                                   @Max(value = 80, message = "最多显示80条数据") int pageSize) {
-        PageResult<PromptVO> page = promptService.queryPage(query, pageNo, pageSize);
+        PageResult<PromptVO> page = promptQueryService.queryPage(query, pageNo, pageSize);
         return Result.success(page);
     }
 
@@ -84,7 +82,7 @@ public class PromptController {
                                                     @RequestParam(defaultValue = "10")
                                                     @Min(value = 1, message = "至少显示一条数据")
                                                     @Max(value = 80, message = "最多显示80条数据") int pageSize) {
-        PageResult<PromptVO> page = promptService.queryMyPage(query, pageNo, pageSize);
+        PageResult<PromptVO> page = promptQueryService.queryMyPage(query, pageNo, pageSize);
         return Result.success(page);
     }
 
@@ -103,7 +101,7 @@ public class PromptController {
             @Min(value = 1, message = "至少为1条")
             @Max(value = 50, message = "最多为50条")int limit
     ) {
-        List<PromptVO> hotList = promptService.getHotList(type, limit);
+        List<PromptVO> hotList = promptQueryService.getHotList(type, limit);
         //返回热门ids对应的提示词集合
         return Result.success(hotList);
     }
@@ -112,7 +110,7 @@ public class PromptController {
     @Operation(summary = "复制提示词", description = "记录复制的提示词并返回内容")
     @GetMapping("{id}/copy")
     public Result<String> copyPrompt(@Parameter(description = "提示词ID") @PathVariable Long id) {
-        String context = promptService.copyPrompt(id);
+        String context = promptCommandService.copyPrompt(id);
         return Result.success("copy success", context);
     }
 }

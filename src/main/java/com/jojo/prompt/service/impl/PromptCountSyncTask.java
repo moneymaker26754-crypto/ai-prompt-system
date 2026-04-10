@@ -21,13 +21,6 @@ public class PromptCountSyncTask {
     //2.5更改，应对脏读问题
     @Scheduled(fixedDelay = 300000)
     public void syncPromptCounts() {
-//        promptMapper.selectList(null).forEach(prompt -> {
-//            try {
-//                redisCacheService.syncCountToDb(prompt.getId());
-//            }catch (Exception e){
-//                log.error("sync prompt count failed, promptId={}", prompt.getId(), e);
-//            }
-//        });
         Set<Long> dirtyPromptIds = redisCacheService.getDirtyPromptId();
         if(dirtyPromptIds.isEmpty()) {
             return;

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+        <!DOCTYPE mapper
+                PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+                "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.jojo.prompt.mapper.PromptFavoriteMapper">
+
+    <select id="selectMyFavoritePromptPage"
+            resultType="com.jojo.prompt.dto.response.PromptFavoriteListItem">
+        select pf.id as favoriteId,
+               pf.create_time as favoriteTime,
+               p.id as promptId,
+               p.title as Title,
+               p.content as content,
+               p.tags as tags,
+               p.view_count as viewCount,
+               p.like_count as likeCount,
+               p.favorite_count as favoriteCount,
+               p.copy_count as copyCount,
+               p.user_id as userId,
+               p.category_id as categoryId,
+               c.name as categoryName
+        from prompt_favorite pf
+        inner join prompt p on pf.prompt_id = p.id
+        left join category c on p.category_id = c.id
+        where pf.user_id = #{userId}
+          and p.deleted = 0
+          and c.deleted = 0
+        order by pf.create_time desc
+    </select>
+</mapper>

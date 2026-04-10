@@ -5,7 +5,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.jojo.prompt.common.constant.UserStatus;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.utils.JwtUtil;
-import com.jojo.prompt.common.utils.UserContext;
 import com.jojo.prompt.converter.UserConverter;
 import com.jojo.prompt.dto.request.LoginDTO;
 import com.jojo.prompt.dto.request.PasswordUpdateDTO;
@@ -30,6 +29,7 @@ public class UserServiceImpl implements UserService {
     private final UserConverter userConverter;
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final PromptPermissionService promptPermissionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -82,7 +82,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserVO getCurrentUser() {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException("user not found");
@@ -92,7 +92,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void UpdateInfo(UserUpdateDTO dto) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         User existing = userMapper.selectById(userId);
         if (existing == null) {
             throw new BusinessException("user not found");
@@ -120,7 +120,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void UpdatePassword(PasswordUpdateDTO dto) {
-        Long userId = requireCurrentUserId();
+        Long userId = promptPermissionService.requireCurrentUserId();
         User user = userMapper.selectById(userId);
         if (user == null) {
             throw new BusinessException("user not found");
@@ -150,13 +150,5 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException("user not found");
         }
         return userConverter.toVO(user);
-    }
-
-    private Long requireCurrentUserId() {
-        Long userId = UserContext.getUserId();
-        if (userId == null) {
-            throw new BusinessException(401, "not logged in, please log in first");
-        }
-        return userId;
     }
 }

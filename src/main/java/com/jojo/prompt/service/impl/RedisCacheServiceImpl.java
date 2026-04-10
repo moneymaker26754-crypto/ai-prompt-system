@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -24,6 +25,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
     private final PromptMapper promptMapper;
+    private final DefaultRedisScript<List>  redisScript;
 
     @Override
     public void cachePromptDetail(Long promptId, PromptVO promptVO) {
@@ -138,23 +140,29 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public void syncCountToDb(Long promptId) {
-        Map<String, Long> counts = getPromptCounts(promptId);
-        if(counts.values().stream().allMatch(count -> count == 0L)) {
+        List<Long> deltas = hasProcessingCounts(promptId)
+                ? getProcessingCounts(promptId)
+                : redisScript(promptId);
+
+        long viewDelta = deltas.get(0);
+        long likeDelta = deltas.get(1);
+        long favoriteDelta = deltas.get(2);
+        long copyDelta = deltas.get(3);
+
+        if (viewDelta == 0L && likeDelta == 0L && favoriteDelta == 0L && copyDelta == 0L) {
+            clearProcessingKeys(promptId);
             return;
         }
+
         promptMapper.incrementCounts(
                 promptId,
-                counts.get("viewCount").intValue(),
-                counts.get("likeCount").intValue(),
-                counts.get("favoriteCount").intValue(),
-                counts.get("copyCount").intValue()
+                (int) viewDelta,
+                (int) likeDelta,
+                (int) favoriteDelta,
+                (int) copyDelta
         );
-        stringRedisTemplate.delete(List.of(
-                PROMPT_VIEW_COUNT + promptId,
-                PROMPT_LIKE_COUNT + promptId,
-                PROMPT_FAVORITE_COUNT + promptId,
-                PROMPT_COPY_COUNT + promptId
-        ));
+
+        clearProcessingKeys(promptId);
     }
 
     @Override
@@ -286,5 +294,67 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public void deleteCategoryCache() {
         redisTemplate.delete(CATEGORY_LIST);
+    }
+
+    //lua脚本解决计数问题
+    @SuppressWarnings("unchecked")
+    private List<Long> redisScript(Long promptId) {
+        List<String> keys = List.of(
+                PROMPT_VIEW_COUNT + promptId,
+                PROMPT_VIEW_COUNT_PROCESSING + promptId,
+                PROMPT_LIKE_COUNT + promptId,
+                PROMPT_LIKE_COUNT_PROCESSING + promptId,
+                PROMPT_FAVORITE_COUNT + promptId,
+                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
+                PROMPT_COPY_COUNT + promptId,
+                PROMPT_COPY_COUNT_PROCESSING + promptId
+        );
+
+        List<Object> raw = stringRedisTemplate.execute(
+                redisScript,
+                keys
+        );
+
+        if (raw == null || raw.size() != 4) {
+            return List.of(0L, 0L, 0L, 0L);
+        }
+
+        List<Long> result = new ArrayList<>(4);
+        for (Object item : raw) {
+            result.add(Long.parseLong(String.valueOf(item)));
+        }
+        return result;
+    }
+
+    private List<Long> getProcessingCounts(Long promptId) {
+        List<String> values = stringRedisTemplate.opsForValue().multiGet(List.of(
+                PROMPT_VIEW_COUNT_PROCESSING + promptId,
+                PROMPT_LIKE_COUNT_PROCESSING + promptId,
+                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
+                PROMPT_COPY_COUNT_PROCESSING + promptId
+        ));
+
+        if (values == null || values.isEmpty()) {
+            return List.of(0L, 0L, 0L, 0L);
+        }
+
+        List<Long> result = new ArrayList<>(4);
+        for (String value : values) {
+            result.add(value == null ? 0L : Long.parseLong(value));
+        }
+        return result;
+    }
+
+    private boolean hasProcessingCounts(Long promptId) {
+        return getProcessingCounts(promptId).stream().anyMatch(v -> v > 0);
+    }
+
+    private void clearProcessingKeys(Long promptId) {
+        stringRedisTemplate.delete(List.of(
+                PROMPT_VIEW_COUNT_PROCESSING + promptId,
+                PROMPT_LIKE_COUNT_PROCESSING + promptId,
+                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
+                PROMPT_COPY_COUNT_PROCESSING + promptId
+        ));
     }
 }
