@@ -4,17 +4,21 @@ import cn.hutool.core.bean.BeanUtil;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
 import com.jojo.prompt.common.exception.BusinessException;
+import com.jojo.prompt.common.handler.PromptReviewHandler;
+import com.jojo.prompt.common.utils.RequestIdentityUtil;
 import com.jojo.prompt.dto.request.PromptCreateDTO;
 import com.jojo.prompt.dto.request.PromptUpdateDTO;
 import com.jojo.prompt.entity.Prompt;
-import com.jojo.prompt.mapper.CategoryMapper;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.PromptCommandService;
 import com.jojo.prompt.service.RedisCacheService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.jojo.prompt.common.constant.RedisKeyConstant.COPY_DEDUP_WINDOW_SECONDS;
 
 @Slf4j
 @Service
@@ -23,8 +27,9 @@ public class PromptCommandServiceImpl implements PromptCommandService {
 
     private final PromptMapper promptMapper;
     private final RedisCacheService redisCacheService;
-    private  final CategoryMapper categoryMapper;
     private final PromptPermissionService promptPermissionService;
+    //2.5版责任链模式
+    private final PromptReviewHandler reviewChain;
 
 
     @Override
@@ -32,8 +37,10 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     public Long createPrompt(PromptCreateDTO dto) {
         Long userId = promptPermissionService.requireCurrentUserId();
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
-
         Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
+        //执行审核链
+        reviewChain.review(prompt);
+        //通过写入，插入数据
         prompt.setUserId(userId);
         prompt.setStatus(PromptStatus.ENABLED);
         prompt.setViewCount(0);
@@ -82,12 +89,13 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         redisCacheService.deletePromptCache(id);
     }
 
-    public String copyPrompt(Long id) {
+    public String copyPrompt(Long id, HttpServletRequest request) {
         Prompt prompt = promptMapper.selectById(id);
         if (prompt == null) {
             throw new BusinessException(404, "prompt not exist");
         }
-        Long currentUserId = promptPermissionService.requireCurrentUserId();
+
+        Long currentUserId = promptPermissionService.getCurrentUserIdOrNull();
         boolean owner = currentUserId != null && currentUserId.equals(prompt.getUserId());
         if (!owner) {
             if (prompt.getStatus() != PromptStatus.ENABLED) {
@@ -97,11 +105,16 @@ public class PromptCommandServiceImpl implements PromptCommandService {
                 throw new BusinessException(404, "prompt not exist");
             }
         }
-        redisCacheService.incrementCopyCount(id);
-
-        log.info("copy prompt success: promptId:{}, copyCount:{}", id, prompt.getCopyCount());
+        //复制去重，基于用户和请求唯一标识，一分钟内相同用户相同请求只记录一次复制，防止重复点击导致复制数暴涨
+        String identifier = RequestIdentityUtil.buildCopyIdentifier(currentUserId, request);
+        boolean firstCopyInWindow = redisCacheService.tryRecordCopyCount(
+                identifier,
+                id,
+                COPY_DEDUP_WINDOW_SECONDS);
+        if (firstCopyInWindow) {
+            redisCacheService.incrementCopyCount(id);
+            log.info("copy prompt success: promptId:{}, copyCount:{}", id, prompt.getCopyCount());
+        }
         return prompt.getContent();
-
     }
-
 }

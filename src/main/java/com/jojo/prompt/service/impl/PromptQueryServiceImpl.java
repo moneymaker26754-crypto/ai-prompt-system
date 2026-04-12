@@ -1,11 +1,13 @@
 package com.jojo.prompt.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
+import com.jojo.prompt.common.utils.RequestIdentityUtil;
 import com.jojo.prompt.converter.PromptConverter;
 import com.jojo.prompt.dto.request.PromptQueryDTO;
 import com.jojo.prompt.dto.response.PromptVO;
@@ -14,6 +16,7 @@ import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.mapper.CategoryMapper;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import static com.jojo.prompt.common.constant.RedisKeyConstant.*;
 
 @Slf4j
 @Service
@@ -41,35 +46,35 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     private final PromptPermissionService promptPermissionService;
 
 
-    //2.0引入redis，应对缓存穿透
+    //2.0引入redis，应对缓存穿透和雪崩
     @Override
     public PromptVO queryPromptById(Long id) {
-        Long currentUserId = promptPermissionService.requireCurrentUserId();
+        Long currentUserId = promptPermissionService.getCurrentUserIdOrNull();
         if (redisCacheService.isPromptNullCache(id)) {
             throw new BusinessException(404, "prompt not exist");
         }
         //先查询缓存
         PromptVO cacheVO = redisCacheService.getPromptDetailCache(id);
         if (cacheVO != null) {
-            //命中缓存
+            //命中缓存拷贝对象，防止污染缓存
+            PromptVO result = BeanUtil.copyProperties(cacheVO, PromptVO.class);
             //非本人查询才计数viewCount
-            boolean owner = currentUserId != null && currentUserId.equals(cacheVO.getUserId());
+            boolean owner = currentUserId != null && currentUserId.equals(result.getUserId());
             if (!owner) {
                 redisCacheService.incrementViewCount(id);
-                promptInteractionAssembler.mergeRedisCountsToVO(cacheVO, id);
             }
-            //统一count计数
-            promptInteractionAssembler.mergeRedisCountsToVO(cacheVO, id);
+            //无论是否owner，都merge实时计数
+            promptInteractionAssembler.mergeRedisCountsToVO(result, id);
             //设置补充当前用户的点赞/收藏状态
             if (currentUserId != null) {
-                cacheVO.setIsLike(redisCacheService.isUserLiked(currentUserId, id));
-                cacheVO.setIsFavorite(redisCacheService.isUserFavorite(currentUserId, id));
+                result.setIsLike(redisCacheService.isUserLiked(currentUserId, id));
+                result.setIsFavorite(redisCacheService.isUserFavorite(currentUserId, id));
             } else {
-                cacheVO.setIsLike(false);
-                cacheVO.setIsFavorite(false);
+                result.setIsLike(false);
+                result.setIsFavorite(false);
             }
 
-            return cacheVO;
+            return result;
         }
         //缓存未命中，查数据库
         Prompt prompt = promptMapper.selectById(id);
@@ -91,11 +96,12 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         //非本人查询才计数viewCount
         if (!owner) {
             redisCacheService.incrementViewCount(id);
-            promptInteractionAssembler.mergeRedisCountsToVO(vo, id);
         }
+        //无论是否owner，都merge实时计数
+        promptInteractionAssembler.mergeRedisCountsToVO(vo, id);
         if (currentUserId != null) {
-            vo.setIsLike(promptLikeService.isLiked(currentUserId, id));
-            vo.setIsFavorite(promptFavoriteService.isFavoritePrompt(currentUserId, id));
+            vo.setIsLike(promptLikeService.isLiked(id, currentUserId));
+            vo.setIsFavorite(promptFavoriteService.isFavoritePrompt(id, currentUserId));
         } else {
             vo.setIsLike(false);
             vo.setIsFavorite(false);
@@ -109,7 +115,8 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     }
 
     @Override
-    public PageResult<PromptVO> queryPage(PromptQueryDTO query, Integer pageNo, Integer pageSize) {
+    public PageResult<PromptVO> queryPage(PromptQueryDTO query, Integer pageNo, Integer pageSize, HttpServletRequest request) {
+        applySearchRateLimit(request);
         if (StringUtils.hasText(query.getKeyword())) {
             searchHistoryService.recordHistory(query.getKeyword());
         }
@@ -131,8 +138,11 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         );
     }
 
+
+
     @Override
-    public PageResult<PromptVO> queryMyPage(PromptQueryDTO query, Integer pageNo, Integer pageSize) {
+    public PageResult<PromptVO> queryMyPage(PromptQueryDTO query, Integer pageNo, Integer pageSize,  HttpServletRequest request) {
+        applySearchRateLimit(request);
         Long userId = promptPermissionService.requireCurrentUserId();
         Page<Prompt> page = new Page<>(pageNo, pageSize);
 
@@ -270,5 +280,19 @@ public class PromptQueryServiceImpl implements PromptQueryService {
                 promptPage.getTotal(),
                 voList
         );
+    }
+
+    //搜索限流
+    private void applySearchRateLimit(HttpServletRequest request) {
+        Long currentUserId = promptPermissionService.getCurrentUserIdOrNull();
+        String identifier = RequestIdentityUtil.buildSearchIdentifier(currentUserId, request);
+        boolean allowed = redisCacheService.trySearchAllowed(
+                identifier,
+                SEARCH_LIMIT_PRE_MINUTE,
+                RATE_LIMIT_EXPIRE_1MIN
+        );
+        if(!allowed) {
+            throw new BusinessException(429, "search too frequent, please try again later");
+        }
     }
 }

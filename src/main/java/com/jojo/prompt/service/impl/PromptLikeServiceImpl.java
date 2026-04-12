@@ -1,6 +1,7 @@
 package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptLike;
 import com.jojo.prompt.mapper.PromptLikeMapper;
@@ -29,6 +30,9 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         Long userId = promptPermissionService.requireCurrentUserId();
         //校验提示词
         Prompt prompt = promptPermissionService.validatePromptExists(id, userId);
+        if(prompt == null){
+            throw new BusinessException("prompt not exist");
+        }
         //查询缓存
         if(redisCacheService.isUserLiked(userId, id)) {
             log.info("Prompt has been liked, idempotent return: userId={}, promptId={}", userId, id);

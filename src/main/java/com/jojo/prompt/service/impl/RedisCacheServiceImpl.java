@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -25,12 +26,14 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
     private final PromptMapper promptMapper;
-    private final DefaultRedisScript<List>  redisScript;
+    private final DefaultRedisScript<List> countSnapshotScript;
+    private final DefaultRedisScript<List> countDeductScript;
+    private final DefaultRedisScript<Long> unlockScript;
 
     @Override
     public void cachePromptDetail(Long promptId, PromptVO promptVO) {
         String key = PROMPT_DEFAULT + promptId;
-        redisTemplate.opsForValue().set(key, promptVO, CACHE_EXPIRE_30MIN, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(key, promptVO, jitter(CACHE_EXPIRE_30MIN), TimeUnit.SECONDS);
     }
 
     @Override
@@ -60,9 +63,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long incrementViewCount(Long promptId) {
         String key = PROMPT_VIEW_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "view", getDeltaOrZero(key));
+        updateHotRanking(promptId, "view", 1.0);
         return count;
     }
 
@@ -70,9 +73,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long incrementLikeCount(Long promptId) {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "like", getDeltaOrZero(key));
+        updateHotRanking(promptId, "like", 1.0);
         return count;
     }
 
@@ -80,9 +83,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long incrementFavoriteCount(Long promptId) {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
+        updateHotRanking(promptId, "favorite", 1.0);
         return count;
     }
 
@@ -90,9 +93,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long incrementCopyCount(Long promptId) {
         String key = PROMPT_COPY_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "copy", getDeltaOrZero(key));
+        updateHotRanking(promptId, "copy", 1.0);
         return count;
     }
 
@@ -100,9 +103,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long decrementLikeCount(Long promptId) {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "like", getDeltaOrZero(key));
+        updateHotRanking(promptId, "like", -1.0);
         return count;
     }
 
@@ -110,65 +113,110 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public Long decrementFavoriteCount(Long promptId) {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         addDirtyPromptId(promptId);
-        updateHotRanking(promptId, "favorite", getDeltaOrZero(key));
+        updateHotRanking(promptId, "favorite", -1.0);
         return count;
     }
-    private double getDeltaOrZero(String key) {
-        String value = stringRedisTemplate.opsForValue().get(key);
-        if(value == null) {
-            return 0D;
-        }
-        return Double.parseDouble(value);
-    }
+    //返回值为map主要是为了根据key的名称获取对应的值，直观
     @Override
     public Map<String, Long> getPromptCounts(Long promptId) {
-        Map<String, Long> counts = new HashMap<>();
-        String viewCount = stringRedisTemplate.opsForValue().get(PROMPT_VIEW_COUNT + promptId);
-        String likeCount = stringRedisTemplate.opsForValue().get(PROMPT_LIKE_COUNT + promptId);
-        String favoriteCount = stringRedisTemplate.opsForValue().get(PROMPT_FAVORITE_COUNT + promptId);
-        String copyCount = stringRedisTemplate.opsForValue().get(PROMPT_COPY_COUNT + promptId);
+        List<String> keys = List.of(
+                PROMPT_VIEW_COUNT + promptId,
+                PROMPT_LIKE_COUNT + promptId,
+                PROMPT_FAVORITE_COUNT + promptId,
+                PROMPT_COPY_COUNT + promptId
+        );
+        //从redis计数里获取对应keys的增量
+        List<String> values = stringRedisTemplate.opsForValue().multiGet(keys);
 
-        counts.put("viewCount", viewCount != null ? Long.parseLong(viewCount) : 0L);
-        counts.put("likeCount", likeCount != null ? Long.parseLong(likeCount) : 0L);
-        counts.put("favoriteCount", favoriteCount != null ? Long.parseLong(favoriteCount) : 0L);
-        counts.put("copyCount", copyCount != null ? Long.parseLong(copyCount) : 0L);
-
+        Map<String, Long> counts = new HashMap<>(4);
+        counts.put("viewCount", parseOrZero(values, 0));
+        counts.put("likeCount", parseOrZero(values, 1));
+        counts.put("favoriteCount", parseOrZero(values, 2));
+        counts.put("copyCount", parseOrZero(values, 3));
         return counts;
     }
 
     @Override
-    public void syncCountToDb(Long promptId) {
-        List<Long> deltas = hasProcessingCounts(promptId)
-                ? getProcessingCounts(promptId)
-                : redisScript(promptId);
-
-        long viewDelta = deltas.get(0);
-        long likeDelta = deltas.get(1);
-        long favoriteDelta = deltas.get(2);
-        long copyDelta = deltas.get(3);
-
-        if (viewDelta == 0L && likeDelta == 0L && favoriteDelta == 0L && copyDelta == 0L) {
-            clearProcessingKeys(promptId);
-            return;
+    public boolean syncCountToDb(Long promptId) {
+        String lockKey = PROMPT_COUNT_SYNC_LOCK + promptId;
+        String uuid = UUID.randomUUID().toString();
+        Boolean locked = tryLock(lockKey, uuid, 30);
+        if(!Boolean.TRUE.equals(locked)) {
+            return false;
         }
 
-        promptMapper.incrementCounts(
-                promptId,
-                (int) viewDelta,
-                (int) likeDelta,
-                (int) favoriteDelta,
-                (int) copyDelta
-        );
+        try {
+            List<Long> deltas = getLiveCounts(promptId);
+            long viewDelta = deltas.get(0);
+            long likeDelta = deltas.get(1);
+            long favoriteDelta = deltas.get(2);
+            long copyDelta = deltas.get(3);
 
-        clearProcessingKeys(promptId);
+            if (viewDelta == 0L && likeDelta == 0L && favoriteDelta == 0L && copyDelta == 0L) {
+                return true;
+            }
+            promptMapper.incrementCounts(
+                    promptId,
+                    (int) viewDelta,
+                    (int) likeDelta,
+                    (int) favoriteDelta,
+                    (int) copyDelta
+            );
+            deductLiveCounts(promptId, deltas);
+            return true;
+        } finally {
+            stringRedisTemplate.execute(unlockScript, List.of(lockKey), uuid);
+        }
+    }
+    //用lua脚本获取当前liveKEY的值
+    @SuppressWarnings("unchecked")
+    private List<Long> getLiveCounts(Long promptId) {
+        List<String> keys = List.of(
+                PROMPT_VIEW_COUNT + promptId,
+                PROMPT_LIKE_COUNT + promptId,
+                PROMPT_FAVORITE_COUNT + promptId,
+                PROMPT_COPY_COUNT + promptId
+        );
+        List<Object> raw = stringRedisTemplate.execute(countSnapshotScript, keys);
+        if(raw == null || raw.size() != 4) {
+            return List.of(0L, 0L, 0L, 0L);
+        }
+        List<Long> result = new ArrayList<>(4);
+        for(int i = 0; i < 4; i++) {
+            result.add(parseNumber(raw.get(i)));
+        }
+        return result;
+    }
+    private long parseNumber(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        return Long.parseLong(String.valueOf(value));
+    }
+    //执行扣减的lua脚本
+    @SuppressWarnings("unchecked")
+    private void deductLiveCounts(Long promptId, List<Long> deltas) {
+        List<String> keys = List.of(
+                PROMPT_VIEW_COUNT + promptId,
+                PROMPT_LIKE_COUNT + promptId,
+                PROMPT_FAVORITE_COUNT + promptId,
+                PROMPT_COPY_COUNT + promptId
+        );
+        List<String> args = deltas.stream()
+                .map(String::valueOf)
+                .collect(Collectors.toList());
+        stringRedisTemplate.execute(countDeductScript, keys, args.toArray());
     }
 
     @Override
     public void addDirtyPromptId(Long promptId) {
         stringRedisTemplate.opsForSet().add(PROMPT_COUNT_DIRTY_SET, promptId.toString());
-        stringRedisTemplate.expire(PROMPT_COUNT_DIRTY_SET, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(PROMPT_COUNT_DIRTY_SET, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
     }
 
     @Override
@@ -196,7 +244,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     }
 
     @Override
-    public void updateHotRanking(Long promptId, String rankingType, double score) {
+    public void updateHotRanking(Long promptId, String rankingType, double scoreDelta) {
         String key = switch(rankingType) {
             case "like" -> PROMPT_HOT_LIKE;
             case "view" -> PROMPT_HOT_VIEW;
@@ -205,8 +253,8 @@ public class RedisCacheServiceImpl implements RedisCacheService {
             default -> null;
         };
         if(key != null) {
-            stringRedisTemplate.opsForZSet().add(key, promptId.toString(), score);
-            stringRedisTemplate.expire(key, CACHE_EXPIRE_1DAY, TimeUnit.SECONDS);
+            stringRedisTemplate.opsForZSet().incrementScore(key, promptId.toString(), scoreDelta);
+            stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
         }
     }
 
@@ -233,7 +281,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public void incrementSearchKeyWord(String keyword) {
         stringRedisTemplate.opsForZSet().incrementScore(SEARCH_HOT_KEYWORDS, keyword, 1.0);
-        stringRedisTemplate.expire(SEARCH_HOT_KEYWORDS, CACHE_EXPIRE_7DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(SEARCH_HOT_KEYWORDS, jitter(CACHE_EXPIRE_7DAY), TimeUnit.SECONDS);
     }
 
     @Override
@@ -246,7 +294,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public void addUserLike(Long userId, Long promptId) {
         String key = USER_LIKE_SET + userId;
         stringRedisTemplate.opsForSet().add(key, promptId.toString());
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_7DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_7DAY), TimeUnit.SECONDS);
     }
 
     @Override
@@ -265,7 +313,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public void addUserFavorite(Long userId, Long promptId) {
         String key  = USER_FAVORITE_SET + userId;
         stringRedisTemplate.opsForSet().add(key, promptId.toString());
-        stringRedisTemplate.expire(key, CACHE_EXPIRE_7DAY, TimeUnit.SECONDS);
+        stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_7DAY), TimeUnit.SECONDS);
     }
 
     @Override
@@ -282,7 +330,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public void cacheCategoryList(List<Category> categories) {
-        redisTemplate.opsForValue().set(CATEGORY_LIST, categories, CACHE_EXPIRE_1HOUR, TimeUnit.SECONDS);
+        redisTemplate.opsForValue().set(CATEGORY_LIST, categories, jitter(CACHE_EXPIRE_1HOUR), TimeUnit.SECONDS);
     }
 
     @Override
@@ -295,66 +343,45 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public void deleteCategoryCache() {
         redisTemplate.delete(CATEGORY_LIST);
     }
+    //分布式锁的获取和释放
+    @Override
+    public Boolean tryLock(String lockKey, String requestId, long expireTime) {
+        return stringRedisTemplate.opsForValue().setIfAbsent(lockKey, requestId, expireTime, TimeUnit.SECONDS);
 
-    //lua脚本解决计数问题
-    @SuppressWarnings("unchecked")
-    private List<Long> redisScript(Long promptId) {
-        List<String> keys = List.of(
-                PROMPT_VIEW_COUNT + promptId,
-                PROMPT_VIEW_COUNT_PROCESSING + promptId,
-                PROMPT_LIKE_COUNT + promptId,
-                PROMPT_LIKE_COUNT_PROCESSING + promptId,
-                PROMPT_FAVORITE_COUNT + promptId,
-                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
-                PROMPT_COPY_COUNT + promptId,
-                PROMPT_COPY_COUNT_PROCESSING + promptId
-        );
-
-        List<Object> raw = stringRedisTemplate.execute(
-                redisScript,
-                keys
-        );
-
-        if (raw == null || raw.size() != 4) {
-            return List.of(0L, 0L, 0L, 0L);
-        }
-
-        List<Long> result = new ArrayList<>(4);
-        for (Object item : raw) {
-            result.add(Long.parseLong(String.valueOf(item)));
-        }
-        return result;
     }
 
-    private List<Long> getProcessingCounts(Long promptId) {
-        List<String> values = stringRedisTemplate.opsForValue().multiGet(List.of(
-                PROMPT_VIEW_COUNT_PROCESSING + promptId,
-                PROMPT_LIKE_COUNT_PROCESSING + promptId,
-                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
-                PROMPT_COPY_COUNT_PROCESSING + promptId
-        ));
-
-        if (values == null || values.isEmpty()) {
-            return List.of(0L, 0L, 0L, 0L);
+    //限流相关业务实现
+    @Override
+    public boolean trySearchAllowed(String identifier, long limit, long windowSeconds) {
+        String key = RATE_LIMIT_SEARCH + identifier;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if(count == null) {
+            return false;
         }
-
-        List<Long> result = new ArrayList<>(4);
-        for (String value : values) {
-            result.add(value == null ? 0L : Long.parseLong(value));
+        if(count == 1L) {
+            stringRedisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
         }
-        return result;
+        return count <= limit;
     }
 
-    private boolean hasProcessingCounts(Long promptId) {
-        return getProcessingCounts(promptId).stream().anyMatch(v -> v > 0);
+    @Override
+    public boolean tryRecordCopyCount(String identifier, Long promptId, long windowSeconds) {
+        String key = COPY_DEDUP +  identifier + ":" + promptId;
+        Boolean isSuccess = stringRedisTemplate.opsForValue()
+                .setIfAbsent(key, "1", windowSeconds, TimeUnit.SECONDS);
+
+        return  Boolean.TRUE.equals(isSuccess);
     }
 
-    private void clearProcessingKeys(Long promptId) {
-        stringRedisTemplate.delete(List.of(
-                PROMPT_VIEW_COUNT_PROCESSING + promptId,
-                PROMPT_LIKE_COUNT_PROCESSING + promptId,
-                PROMPT_FAVORITE_COUNT_PROCESSING + promptId,
-                PROMPT_COPY_COUNT_PROCESSING + promptId
-        ));
+
+    private long jitter(long baseSeconds) {
+        return baseSeconds + ThreadLocalRandom.current().nextInt(300);
+    }
+
+    private long parseOrZero(List<String> values, int index) {
+        if (values == null || index >= values.size() || values.get(index) == null) {
+            return 0L;
+        }
+        return Long.parseLong(values.get(index));
     }
 }

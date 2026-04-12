@@ -2,16 +2,14 @@ package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
-import com.jojo.prompt.converter.PromptConverter;
 import com.jojo.prompt.dto.response.PromptFavoriteListItem;
 import com.jojo.prompt.dto.response.PromptFavoriteVO;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptFavorite;
-import com.jojo.prompt.mapper.CategoryMapper;
 import com.jojo.prompt.mapper.PromptFavoriteMapper;
-import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.PromptFavoriteService;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +28,6 @@ import java.util.List;
 public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
     private final PromptFavoriteMapper promptFavoriteMapper;
-    private final PromptMapper promptMapper;
-    private final CategoryMapper categoryMapper;
-    private final PromptConverter promptConverter;
     private final RedisCacheService redisCacheService;
     private final PromptPermissionService promptPermissionService;
 
@@ -43,6 +38,9 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         Long userId = promptPermissionService.requireCurrentUserId();
         //提示词是否存在
         Prompt prompt = promptPermissionService.validatePromptExists(id, userId);
+        if(prompt == null){
+            throw new BusinessException("prompt not exist");
+        }
         //查询缓存
         if(redisCacheService.isUserFavorite(userId, id)){
             log.info("Prompt has been favorite, idempotent return: userId={}, promptId={}", userId, id);

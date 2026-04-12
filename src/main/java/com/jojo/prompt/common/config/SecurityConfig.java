@@ -1,6 +1,6 @@
 package com.jojo.prompt.common.config;
 
-import com.jojo.prompt.common.Fliter.JwtAuthenticationFilter;
+import com.jojo.prompt.common.filter.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,8 +9,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
-import javax.swing.*;
 
 //Security配置只使用密码加密功能，认证由 JWT 处理
 @Configuration
@@ -44,7 +42,7 @@ public class SecurityConfig {
                                 "/api/categories/*",
                                 "/api/search/hot",
                                 "/doc.html",
-                                "/swagger-resoutce/**",
+                                "/swagger-resource/**",
                                 "/v3/api-docs/**",
                                 "/webjars/**",
                                 "/druid/**"

@@ -1,4 +1,4 @@
-package com.jojo.prompt.common.Fliter;
+package com.jojo.prompt.common.filter;
 
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.utils.JwtUtil;

@@ -11,6 +11,7 @@ import com.jojo.prompt.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -30,6 +31,7 @@ public class PromptController {
 
     private final PromptCommandService promptCommandService;
     private final PromptQueryService promptQueryService;
+
     @Operation(summary = "创建提示词")
     @PostMapping
     public Result<Long> createPrompt(@RequestBody @Valid PromptCreateDTO dto) {
@@ -67,8 +69,9 @@ public class PromptController {
                                                   @Parameter(description = "每页大小")
                                                   @RequestParam(defaultValue = "10")
                                                   @Min(value = 1, message = "至少显示一条数据")
-                                                  @Max(value = 80, message = "最多显示80条数据") int pageSize) {
-        PageResult<PromptVO> page = promptQueryService.queryPage(query, pageNo, pageSize);
+                                                  @Max(value = 80, message = "最多显示80条数据") int pageSize,
+                                                  HttpServletRequest request) {
+        PageResult<PromptVO> page = promptQueryService.queryPage(query, pageNo, pageSize, request);
         return Result.success(page);
     }
 
@@ -81,8 +84,9 @@ public class PromptController {
                                                     @Parameter(description = "每页大小")
                                                     @RequestParam(defaultValue = "10")
                                                     @Min(value = 1, message = "至少显示一条数据")
-                                                    @Max(value = 80, message = "最多显示80条数据") int pageSize) {
-        PageResult<PromptVO> page = promptQueryService.queryMyPage(query, pageNo, pageSize);
+                                                    @Max(value = 80, message = "最多显示80条数据") int pageSize,
+                                                    HttpServletRequest request) {
+        PageResult<PromptVO> page = promptQueryService.queryMyPage(query, pageNo, pageSize, request);
         return Result.success(page);
     }
 
@@ -91,15 +95,15 @@ public class PromptController {
     @GetMapping("/hot")
     public Result<List<PromptVO>> queryHotPrompt(
             @Parameter(description = "排行类型：like/view/favorite/copy")
-            @RequestParam(defaultValue = "updateTime")
+            @RequestParam(defaultValue = "view")
             @Pattern(
                     regexp = "^(like|view|favorite|copy)$",
                     message = "类型必须为: like, view, favorite, copy"
-            )String type,
+            ) String type,
             @Parameter(description = "数量")
             @RequestParam(defaultValue = "10")
             @Min(value = 1, message = "至少为1条")
-            @Max(value = 50, message = "最多为50条")int limit
+            @Max(value = 50, message = "最多为50条") int limit
     ) {
         List<PromptVO> hotList = promptQueryService.getHotList(type, limit);
         //返回热门ids对应的提示词集合
@@ -108,9 +112,9 @@ public class PromptController {
 
     //1.5新增
     @Operation(summary = "复制提示词", description = "记录复制的提示词并返回内容")
-    @GetMapping("{id}/copy")
-    public Result<String> copyPrompt(@Parameter(description = "提示词ID") @PathVariable Long id) {
-        String context = promptCommandService.copyPrompt(id);
+    @PostMapping("{id}/copy")
+    public Result<String> copyPrompt(@Parameter(description = "提示词ID") @PathVariable Long id, HttpServletRequest request) {
+        String context = promptCommandService.copyPrompt(id, request);
         return Result.success("copy success", context);
     }
 }

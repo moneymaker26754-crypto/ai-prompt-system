@@ -4,46 +4,12 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.jojo.prompt.mapper.PromptMapper">
 
-    <update id="incrementViewCount">
-        update prompt
-        set view_count = coalesce(view_count, 0) + 1
-        where id = #{id}
-    </update>
-
-    <update id="incrementFavoriteCount">
-        update prompt
-        set favorite_count = coalesce(favorite_count, 0) + 1
-        where id = #{id}
-    </update>
-
-    <update id="decrementFavoriteCount">
-        update prompt
-        set favorite_count = coalesce(favorite_count, 0) - 1
-        where id = #{id}
-          and favorite_count > 0
-    </update>
-    <update id="incrementLikeCount">
-        update prompt
-        set like_count = coalesce(like_count, 0) + 1
-        where id = #{id}
-    </update>
-    <update id="decrementLikeCount">
-        update prompt
-        set like_count = coalesce(like_count, 0) - 1
-        where id = #{id}
-          and like_count > 0
-    </update>
-    <update id="incrementCopyCount">
-        update prompt
-        set copy_count = coalesce(copy_count, 0) + 1
-        where id = #{id}
-    </update>
     <update id="incrementCounts">
         update prompt
-        set view_count = coalesce(view_count, 0) + #{viewCount},
-            like_count = coalesce(like_count, 0) + #{likeCount},
-            favorite_count = coalesce(favorite_count, 0) + #{favoriteCount},
-            copy_count = coalesce(copy_count, 0) + #{copyCount}
+        set view_count = GREATEST(coalesce(view_count, 0) + #{viewCount}, 0),
+            like_count = GREATEST(coalesce(like_count, 0) + #{likeCount}, 0),
+            favorite_count = GREATEST(coalesce(favorite_count, 0) + #{favoriteCount}, 0),
+            copy_count = GREATEST(coalesce(copy_count, 0) + #{copyCount}, 0)
         where id = #{promptId}
     </update>
     <select id="searchMyFullText" resultType="com.jojo.prompt.entity.Prompt">

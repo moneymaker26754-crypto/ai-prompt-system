@@ -11,6 +11,6 @@ import org.apache.ibatis.annotations.Param;
 public interface PromptFavoriteMapper extends BaseMapper<PromptFavorite> {
     Page<PromptFavoriteListItem> selectMyFavoritePromptPage(
             @Param("page") Page<PromptFavoriteListItem> page,
-            @Param("promptId") Long promptId
+            @Param("userId") Long userId
     );
 }

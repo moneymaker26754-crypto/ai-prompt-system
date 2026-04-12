@@ -16,7 +16,7 @@ public class Knife4jConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("AI提示词管理系统")
-                        .version("v1.5.0")
+                        .version("v2.0.0")
                         .description("提供提示词的增删改查、分类管理等功能")
                         .contact(new Contact()
                                 .name("jojo")

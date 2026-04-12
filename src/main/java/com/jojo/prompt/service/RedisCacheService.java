@@ -25,14 +25,14 @@ public interface RedisCacheService {
     Long decrementFavoriteCount(Long promptId);
 
     Map<String, Long> getPromptCounts(Long promptId);
-    void syncCountToDb(Long promptId);
+    boolean syncCountToDb(Long promptId);
     //应对计数脏读问题
     void addDirtyPromptId(Long promptId);
     Set<Long> getDirtyPromptId();
     void removeDirtyPromptId(Set<Long> promptIds);
 
     //排行榜操作
-    void updateHotRanking(Long promptId, String rankingType, double score);
+    void updateHotRanking(Long promptId, String rankingType, double scoreDelta);
     List<Long> getHotRanking(String rankingType, int topN);
 
     //搜索热门提示词
@@ -52,4 +52,11 @@ public interface RedisCacheService {
     void cacheCategoryList(List<Category> categories);
     List<Category> getCategoryListCache();
     void deleteCategoryCache();
+
+    //分布式锁，用lua脚本实现锁释放
+    Boolean tryLock(String lockKey, String requestId, long expireTime);
+
+    //限流相关
+    boolean trySearchAllowed(String identifier, long limit, long windowSeconds);
+    boolean tryRecordCopyCount(String identifier, Long promptId, long windowSeconds);
 }

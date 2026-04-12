@@ -1,6 +1,5 @@
 package com.jojo.prompt.service.impl;
 
-import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +15,6 @@ import java.util.Set;
 //实现定时将缓存数据打入数据库
 public class PromptCountSyncTask {
 
-    private final PromptMapper promptMapper;
     private final RedisCacheService redisCacheService;
     //2.5更改，应对脏读问题
     @Scheduled(fixedDelay = 300000)
@@ -25,12 +23,14 @@ public class PromptCountSyncTask {
         if(dirtyPromptIds.isEmpty()) {
             return;
         }
-
+        //用hashset，自主去重，顺序无关，还能快速查找
         Set<Long> syncedPromptIds = new HashSet<>();
         for(Long promptId : dirtyPromptIds) {
             try {
-                redisCacheService.syncCountToDb(promptId);
-                syncedPromptIds.add(promptId);
+                boolean isSuccess = redisCacheService.syncCountToDb(promptId);
+                if(isSuccess) {
+                    syncedPromptIds.add(promptId);
+                }
             } catch (Exception e) {
                 log.error("sync prompt count failed, promptId={}", promptId, e);
             }

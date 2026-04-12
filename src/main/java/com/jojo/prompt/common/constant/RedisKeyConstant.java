@@ -1,6 +1,5 @@
 package com.jojo.prompt.common.constant;
 
-import java.util.concurrent.ThreadLocalRandom;
 
 public interface RedisKeyConstant {
 
@@ -46,23 +45,21 @@ public interface RedisKeyConstant {
 
     //限流相关
     String RATE_LIMIT_SEARCH = "rate:limit:search:";
-    String RATE_LIMIT_COPY = "rate:limit:copy:";
+    long SEARCH_LIMIT_PRE_MINUTE = 20L;
+    //复制去重
+    String COPY_DEDUP = "prompt:copy:dedup:";
+    long COPY_DEDUP_WINDOW_SECONDS = 60L;
 
-    //缓存过期时间相关
-    long CACHE_EXPIRE_30MIN = 30 * 60 + ThreadLocalRandom.current().nextInt(300);
-    long CACHE_EXPIRE_1HOUR = 60 * 60 + ThreadLocalRandom.current().nextInt(300);
-    long CACHE_EXPIRE_1DAY = 24 * 60 * 60 + ThreadLocalRandom.current().nextInt(300);
-    long CACHE_EXPIRE_7DAY = 7 * 24 * 60 * 60 + ThreadLocalRandom.current().nextInt(300);
-    //热门缓存过期时间（5分钟）
-    long HOT_CACHE_EXPIRE_5MIN = 5 * 60 + ThreadLocalRandom.current().nextInt(300);
-    //限流过期时间
-    long RATE_LIMIT_EXPIRE_1MIN = 60 + ThreadLocalRandom.current().nextInt(300);
+    //缓存过期时间基础值（秒），使用时需通过 jitter() 动态加随机偏移防止缓存雪崩
+    long CACHE_EXPIRE_30MIN = 30 * 60;
+    long CACHE_EXPIRE_1HOUR = 60 * 60;
+    long CACHE_EXPIRE_1DAY = 24 * 60 * 60;
+    long CACHE_EXPIRE_7DAY = 7 * 24 * 60 * 60;
+    long RATE_LIMIT_EXPIRE_1MIN = 60;
 
 
     //应对计数脏读问题
     String PROMPT_COUNT_DIRTY_SET = "prompt:count:dirty:";
-    public static final String PROMPT_VIEW_COUNT_PROCESSING = "prompt:view:processing:";
-    public static final String PROMPT_LIKE_COUNT_PROCESSING = "prompt:like:processing:";
-    public static final String PROMPT_FAVORITE_COUNT_PROCESSING = "prompt:favorite:processing:";
-    public static final String PROMPT_COPY_COUNT_PROCESSING = "prompt:copy:processing:";
+    //redis锁常量
+    String PROMPT_COUNT_SYNC_LOCK = "prompt:count:sync:lock:";
 }
