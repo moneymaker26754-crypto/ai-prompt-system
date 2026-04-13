@@ -2,6 +2,7 @@ package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.jojo.prompt.common.event.PromptFavoriteEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
 import com.jojo.prompt.dto.response.PromptFavoriteListItem;
@@ -14,10 +15,12 @@ import com.jojo.prompt.service.PromptFavoriteService;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +33,8 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
     private final PromptFavoriteMapper promptFavoriteMapper;
     private final RedisCacheService redisCacheService;
     private final PromptPermissionService promptPermissionService;
+    //事件监听器，注入事件发布器
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -74,6 +79,12 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         redisCacheService.deletePromptCache(id);
 
         log.info("favorite success, userId={}, promptId={}", userId, id);
+
+        //发布收藏事件
+        PromptFavoriteEvent event = new PromptFavoriteEvent(id, userId, prompt.getUserId(), LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish like event: promptID={}, userId={}", prompt.getUserId(), prompt.getUserId());
+
     }
 
     @Override

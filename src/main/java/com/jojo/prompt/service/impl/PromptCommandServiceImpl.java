@@ -38,16 +38,24 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         Long userId = promptPermissionService.requireCurrentUserId();
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
         Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
-        //执行审核链
-        reviewChain.review(prompt);
-        //通过写入，插入数据
+        //通过写入数据
         prompt.setUserId(userId);
         prompt.setStatus(PromptStatus.ENABLED);
         prompt.setViewCount(0);
         prompt.setCopyCount(0);
         prompt.setVersion(1);
+        //执行审核链
+        try {
+            reviewChain.review(prompt);
+            log.info("prompt check passed: title={}", prompt.getTitle());
+        } catch (Exception e) {
+            log.error("prompt check failed: title={}, reason={}", prompt.getTitle(), e.getMessage());
+            throw e;
+        }
 
+        //审核通过，写入数据库
         promptMapper.insert(prompt);
+
         return prompt.getId();
     }
 

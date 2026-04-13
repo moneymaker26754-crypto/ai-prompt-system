@@ -1,6 +1,7 @@
 package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.jojo.prompt.common.event.PromptLikeEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptLike;
@@ -10,9 +11,12 @@ import com.jojo.prompt.service.PromptLikeService;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -22,6 +26,8 @@ public class PromptLikeServiceImpl implements PromptLikeService {
     private final PromptLikeMapper promptLikeMapper;
     private final RedisCacheService redisCacheService;
     private final PromptPermissionService promptPermissionService;
+    //事件监听器,注入事件发布器
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -66,6 +72,12 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         redisCacheService.deletePromptCache(id);
 
         log.info("Like success, userId={}, promptId={}", userId, id);
+
+        //发布点赞事件
+        PromptLikeEvent event = new PromptLikeEvent(id, userId, prompt.getUserId(), LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish like event: promptID={}, userId={}", prompt.getUserId(), prompt.getUserId());
+
     }
 
     @Override

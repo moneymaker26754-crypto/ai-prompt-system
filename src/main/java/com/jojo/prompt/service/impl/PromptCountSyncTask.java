@@ -13,6 +13,7 @@ import java.util.Set;
 @Component
 @RequiredArgsConstructor
 //实现定时将缓存数据打入数据库
+//todo:应用消息队列实现异步增量更新，减少对数据库的压力
 public class PromptCountSyncTask {
 
     private final RedisCacheService redisCacheService;

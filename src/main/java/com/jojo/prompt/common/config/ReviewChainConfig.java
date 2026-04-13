@@ -12,6 +12,7 @@ public class ReviewChainConfig {
 
     @Bean
     public PromptReviewHandler reviewChain(
+            //构造审核责任链从敏感词检测开始最后是原创性检测
             SensitiveWordReviewHandler sensitiveWordReviewHandler,
             QualityReviewHandler qualityReviewHandler,
             OriginalityReviewHandler originalityReviewHandler
@@ -20,6 +21,7 @@ public class ReviewChainConfig {
         sensitiveWordReviewHandler.setNext(qualityReviewHandler);
         qualityReviewHandler.setNext(originalityReviewHandler);
 
+        //返回链头
         return sensitiveWordReviewHandler;
     }
 }

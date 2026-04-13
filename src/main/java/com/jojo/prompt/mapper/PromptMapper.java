@@ -18,6 +18,4 @@ public interface PromptMapper extends BaseMapper<Prompt> {
     Page<Prompt> searchPublicFullText(Page<Prompt> page, @Param("keyword") String keyword, @Param("visibility") PromptVisibility visibility, @Param("status") PromptStatus status);
 
     void incrementCounts(@Param("promptId") Long promptId, @Param("viewCount") Integer viewCount, @Param("likeCount") Integer likeCount, @Param("favoriteCount") Integer favoriteCount, @Param("copyCount") Integer copyCount);
-
-    List<Prompt> rankByComprehensiveScore(int limit);
 }
