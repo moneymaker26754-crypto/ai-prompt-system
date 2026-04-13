@@ -244,8 +244,12 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     }
 
     @Override
+    //
     public void updateHotRanking(Long promptId, String rankingType, double scoreDelta) {
         String key = switch(rankingType) {
+            //增加综合热度
+            case "hot" -> PROMPT_HOT_TOTAL;
+
             case "like" -> PROMPT_HOT_LIKE;
             case "view" -> PROMPT_HOT_VIEW;
             case "favorite" -> PROMPT_HOT_FAVORITE;
@@ -261,6 +265,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public List<Long> getHotRanking(String rankingType, int topN) {
         String key = switch (rankingType) {
+            case "hot" -> PROMPT_HOT_TOTAL;
             case "like" -> PROMPT_HOT_LIKE;
             case "view" -> PROMPT_HOT_VIEW;
             case "favorite" -> PROMPT_HOT_FAVORITE;

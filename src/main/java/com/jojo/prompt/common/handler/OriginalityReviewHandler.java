@@ -37,7 +37,9 @@ public class OriginalityReviewHandler extends AbstractReviewHandler {
 
             if(similarity > SIMILARITY_THRESHOLD) {
                 log.info("[{}] check fail: promptId={}", getHandlerName(), prompt.getId());
-                throw new BusinessException("prompt is too similar to existing prompt, similarity=(%.2f%%)" + similarity * 100);
+                throw new BusinessException(
+                        String.format("prompt is too similar to existing prompt, similarity=%.2f%%", similarity * 100)
+                );
             }
         }
         log.info("[{}] check success: promptId={}", getHandlerName(), prompt.getId());

@@ -1,23 +1,25 @@
 package com.jojo.prompt.common.listener;
 
+import com.jojo.prompt.common.event.PromptFavoriteEvent;
 import com.jojo.prompt.common.event.PromptLikeEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 //事件监听器：发送通知
 @Slf4j
 @Component
 public class NotificationListener {
     //监听喜欢事件 - 发送通知
-    @EventListener
     @Async("eventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPromptLiked(PromptLikeEvent event) {
         log.info("[notificationListener] send like message: promptId={},", event.getPromptId());
-        //todo:发送通知消息给prompt作者
+        //发送通知消息给prompt作者
         try {
-            if(event.getPromptId().equals(event.getAuthorId())) {
+            if(event.getUserId().equals(event.getAuthorId())) {
                 return;
             }
             sendNotification(
@@ -33,12 +35,12 @@ public class NotificationListener {
         }
     }
     //监听收藏事件 - 发送通知
-    @EventListener
     @Async("eventExecutor")
-    public void onPromptFavorite(PromptLikeEvent event) {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPromptFavorite(PromptFavoriteEvent event) {
         log.info("[notificationListener] send favorite message: promptId={}", event.getPromptId());
         try {
-            if(event.getPromptId().equals(event.getAuthorId())) {
+            if(!event.getUserId().equals(event.getAuthorId())) {
                 return;
             }
             sendNotification(

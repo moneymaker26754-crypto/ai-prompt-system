@@ -4,6 +4,7 @@ import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.entity.Prompt;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Component
@@ -21,6 +22,10 @@ public class QualityReviewHandler extends AbstractReviewHandler {
 
         String title = prompt.getTitle();
         String content = prompt.getContent();
+
+        if(!StringUtils.hasText(title) ||  !StringUtils.hasText(content)) {
+            throw new BusinessException("title or content is null");
+        }
 
         //检测标题长度
         if(title.length() < MIN_TITLE_LENGTH || title.length() > MAX_TITLE_LENGTH) {

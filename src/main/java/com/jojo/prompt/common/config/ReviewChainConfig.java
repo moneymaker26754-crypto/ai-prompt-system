@@ -18,10 +18,12 @@ public class ReviewChainConfig {
             OriginalityReviewHandler originalityReviewHandler
     ) {
         //构造责任链
-        sensitiveWordReviewHandler.setNext(qualityReviewHandler);
-        qualityReviewHandler.setNext(originalityReviewHandler);
+        sensitiveWordReviewHandler
+                .setNext(qualityReviewHandler)
+                .setNext(originalityReviewHandler);
 
         //返回链头
         return sensitiveWordReviewHandler;
     }
+
 }

@@ -1,6 +1,7 @@
 package com.jojo.prompt.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.event.PromptLikeEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.entity.Prompt;
@@ -73,12 +74,13 @@ public class PromptLikeServiceImpl implements PromptLikeService {
 
         log.info("Like success, userId={}, promptId={}", userId, id);
 
-        //发布点赞事件
-        PromptLikeEvent event = new PromptLikeEvent(id, userId, prompt.getUserId(), LocalDateTime.now());
-        eventPublisher.publishEvent(event);
-        log.info("publish like event: promptID={}, userId={}", prompt.getUserId(), prompt.getUserId());
+        String action = "like";
+
+        publish(id, userId, action);
 
     }
+
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -104,6 +106,10 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         redisCacheService.deletePromptCache(id);
 
         log.info("Unlike success, userId={}, promptId={}", userId, id);
+
+        String action = "unlike";
+
+        publish(id, userId, action);
     }
 
     @Override
@@ -125,5 +131,11 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         return count > 0;
     }
 
-
+    //辅助发布事件
+    private void publish(Long id, Long userId, String action) {
+        //发布点赞事件
+        PromptHeatEvent event = new PromptHeatEvent(id, userId, action, LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish like event: promptID={}, userId={}", id, userId);
+    }
 }

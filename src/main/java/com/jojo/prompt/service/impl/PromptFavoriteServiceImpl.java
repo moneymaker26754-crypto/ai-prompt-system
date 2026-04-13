@@ -3,6 +3,7 @@ package com.jojo.prompt.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jojo.prompt.common.event.PromptFavoriteEvent;
+import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
 import com.jojo.prompt.dto.response.PromptFavoriteListItem;
@@ -80,11 +81,9 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
         log.info("favorite success, userId={}, promptId={}", userId, id);
 
-        //发布收藏事件
-        PromptFavoriteEvent event = new PromptFavoriteEvent(id, userId, prompt.getUserId(), LocalDateTime.now());
-        eventPublisher.publishEvent(event);
-        log.info("publish like event: promptID={}, userId={}", prompt.getUserId(), prompt.getUserId());
+        String type = "favorite";
 
+        publish(id, userId, type);
     }
 
     @Override
@@ -112,6 +111,10 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         redisCacheService.deletePromptCache(id);
 
         log.info("unfavorite success, userId={}, promptId={}", userId, id);
+
+        String type = "unfavorite";
+
+        publish(id, userId, type);
 
     }
 
@@ -179,4 +182,11 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
         return count > 0;
     }
 
+    //辅助发布事件
+    private void publish(Long id, Long userId, String type) {
+        //发布点赞事件
+        PromptHeatEvent event = new PromptHeatEvent(id, userId, type, LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish like event: promptID={}, userId={}", id, userId);
+    }
 }

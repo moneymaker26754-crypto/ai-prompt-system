@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
+import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
 import com.jojo.prompt.common.utils.RequestIdentityUtil;
@@ -19,9 +20,11 @@ import com.jojo.prompt.service.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,8 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     private final RedisCacheService redisCacheService;
     private final PromptInteractionAssembler promptInteractionAssembler;
     private final PromptPermissionService promptPermissionService;
+    //事件监视器
+    private final ApplicationEventPublisher eventPublisher;
 
 
     //2.0引入redis，应对缓存穿透和雪崩
@@ -73,6 +78,16 @@ public class PromptQueryServiceImpl implements PromptQueryService {
                 result.setIsLike(false);
                 result.setIsFavorite(false);
             }
+            //事件发布，更新热度
+            String action = "view";
+            eventPublisher.publishEvent(
+                    new PromptHeatEvent(
+                            id,
+                            currentUserId,
+                            action,
+                            LocalDateTime.now()
+                    )
+            );
 
             return result;
         }

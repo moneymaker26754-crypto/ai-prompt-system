@@ -1,10 +1,13 @@
 package com.jojo.prompt.common.listener;
 
+import com.jojo.prompt.common.event.PromptCreateEvent;
+import com.jojo.prompt.common.event.PromptFavoriteEvent;
 import com.jojo.prompt.common.event.PromptLikeEvent;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 
@@ -12,8 +15,8 @@ import java.time.LocalDateTime;
 @Slf4j
 @Component
 public class BehaviorLogListener {
-    @EventListener
     @Async("eventExecutor")
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPromptLiked(PromptLikeEvent event) {
         log.info("[behaviorLogListener] receive like event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
@@ -33,9 +36,9 @@ public class BehaviorLogListener {
         }
     }
 
-    @EventListener
     @Async("eventExecutor")
-    public void onPromptFavorite(PromptLikeEvent event) {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPromptFavorite(PromptFavoriteEvent event) {
         log.info("[behaviorLogListener] receive favorite event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
         //记录到行为分析系统
@@ -44,7 +47,7 @@ public class BehaviorLogListener {
                     event.getUserId(),
                     "favorite",
                     event.getPromptId(),
-                    event.getLikeTime()
+                    event.getFavoriteTime()
             );
 
             log.debug("[behaviorLogListener] record favorite behavior success");
@@ -54,9 +57,9 @@ public class BehaviorLogListener {
         }
     }
 
-    @EventListener
     @Async("eventExecutor")
-    public void onPromptCreated(PromptLikeEvent event) {
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    public void onPromptCreated(PromptCreateEvent event) {
         log.info("[behaviorLogListener] receive create event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
         //记录到行为分析系统
@@ -65,7 +68,7 @@ public class BehaviorLogListener {
                     event.getUserId(),
                     "create",
                     event.getPromptId(),
-                    event.getLikeTime()
+                    event.getCreateTime()
             );
 
             log.debug("[behaviorLogListener] record create behavior success");

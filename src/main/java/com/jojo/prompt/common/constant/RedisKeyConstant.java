@@ -36,6 +36,9 @@ public interface RedisKeyConstant {
     //提示词复制量缓存key
     String PROMPT_COPY_COUNT = "prompt:copy:count:";
 
+    //综合热度总榜key
+    String PROMPT_HOT_TOTAL = "prompt:hot:total";
+
     //热门关键字搜索
     String SEARCH_HOT_KEYWORDS = "search:hot:keywords:";
 

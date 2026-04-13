@@ -3,6 +3,8 @@ package com.jojo.prompt.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
+import com.jojo.prompt.common.event.PromptCreateEvent;
+import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.handler.PromptReviewHandler;
 import com.jojo.prompt.common.utils.RequestIdentityUtil;
@@ -15,8 +17,11 @@ import com.jojo.prompt.service.RedisCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 import static com.jojo.prompt.common.constant.RedisKeyConstant.COPY_DEDUP_WINDOW_SECONDS;
 
@@ -30,6 +35,7 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     private final PromptPermissionService promptPermissionService;
     //2.5版责任链模式
     private final PromptReviewHandler reviewChain;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     @Override
@@ -56,6 +62,16 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         //审核通过，写入数据库
         promptMapper.insert(prompt);
 
+        PromptCreateEvent event = new PromptCreateEvent(
+                prompt.getId(),
+                userId,
+                prompt.getTitle(),
+                LocalDateTime.now()
+
+        );
+
+        eventPublisher.publishEvent(event);
+
         return prompt.getId();
     }
 
@@ -73,6 +89,14 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
 
         Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
+        //执行审核链
+        try {
+            reviewChain.review(prompt);
+            log.info("prompt check passed: title={}", prompt.getTitle());
+        } catch (Exception e) {
+            log.error("prompt check failed: title={}, reason={}", prompt.getTitle(), e.getMessage());
+            throw e;
+        }
         int rows = promptMapper.updateById(prompt);
         if (rows == 0) {
             throw new BusinessException("prompt has been modified by another user");
@@ -123,6 +147,18 @@ public class PromptCommandServiceImpl implements PromptCommandService {
             redisCacheService.incrementCopyCount(id);
             log.info("copy prompt success: promptId:{}, copyCount:{}", id, prompt.getCopyCount());
         }
+
+        //事件发布，更新热度
+        String action = "copy";
+        eventPublisher.publishEvent(
+                new PromptHeatEvent(
+                        id,
+                        currentUserId,
+                        action,
+                        LocalDateTime.now()
+                )
+        );
+
         return prompt.getContent();
     }
 }
