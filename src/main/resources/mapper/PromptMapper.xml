@@ -12,6 +12,16 @@
             copy_count = GREATEST(coalesce(copy_count, 0) + #{copyCount}, 0)
         where id = #{promptId}
     </update>
+
+    <update id="updateStatusByIdAndVersion">
+        update prompt
+        set status = #{targetStatus}
+        where id = #{id}
+        and version = #{expectedVersion}
+        and status = {sourceStatus}
+        and deleted = 0
+    </update>
+
     <select id="searchMyFullText" resultType="com.jojo.prompt.entity.Prompt">
         select *,
                match(title, content) against(#{keyword} in natural language mode) as score
@@ -21,6 +31,7 @@
           and deleted = 0
         order by score desc, create_time desc
     </select>
+
     <select id="searchPublicFullText" resultType="com.jojo.prompt.entity.Prompt">
         select *,
             match(title, content) against(#{keyword} in natural language mode) as score

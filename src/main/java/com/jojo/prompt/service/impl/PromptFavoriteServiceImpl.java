@@ -83,7 +83,10 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
         String type = "favorite";
 
-        publish(id, userId, type);
+        publishHotEvent(id, userId, type);
+
+        publishFavoriteEvent(id, userId, prompt.getUserId());
+
     }
 
     @Override
@@ -114,8 +117,7 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
         String type = "unfavorite";
 
-        publish(id, userId, type);
-
+        publishHotEvent(id, userId, type);
     }
 
 
@@ -183,10 +185,17 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
     }
 
     //辅助发布事件
-    private void publish(Long id, Long userId, String type) {
+    private void publishHotEvent(Long id, Long userId, String type) {
         //发布点赞事件
         PromptHeatEvent event = new PromptHeatEvent(id, userId, type, LocalDateTime.now());
         eventPublisher.publishEvent(event);
-        log.info("publish like event: promptID={}, userId={}", id, userId);
+        log.info("publish heat event: promptId={}, userId={}, action={}", id, userId, type);
+    }
+
+    //发布收藏事件
+    private void publishFavoriteEvent(Long id, Long userId, Long authorId) {
+        PromptFavoriteEvent event = new PromptFavoriteEvent(id, userId, authorId, LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish favorite event: promptID={}, userId={}, authorId={}", id, userId, authorId);
     }
 }

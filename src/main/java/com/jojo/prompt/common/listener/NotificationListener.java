@@ -18,6 +18,7 @@ public class NotificationListener {
     public void onPromptLiked(PromptLikeEvent event) {
         log.info("[notificationListener] send like message: promptId={},", event.getPromptId());
         //发送通知消息给prompt作者
+        String type = "like";
         try {
             if(event.getUserId().equals(event.getAuthorId())) {
                 return;
@@ -25,7 +26,7 @@ public class NotificationListener {
             sendNotification(
                     event.getAuthorId(),
                     String.format("user %d like your prompt", event.getUserId()),
-                    "like",
+                    type,
                     event.getPromptId());
 
             log.info("[notificationListener] publish like message success: authorId={}", event.getAuthorId());
@@ -39,14 +40,15 @@ public class NotificationListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPromptFavorite(PromptFavoriteEvent event) {
         log.info("[notificationListener] send favorite message: promptId={}", event.getPromptId());
+        String type = "favorite";
         try {
-            if(!event.getUserId().equals(event.getAuthorId())) {
+            if(event.getUserId().equals(event.getAuthorId())) {
                 return;
             }
             sendNotification(
                     event.getAuthorId(),
                     String.format("user %d favorite your prompt", event.getUserId()),
-                    "favorite",
+                    type,
                     event.getPromptId());
             log.info("[notificationListener] publish favorite message success: authorId={}", event.getAuthorId());
         }catch (Exception e) {

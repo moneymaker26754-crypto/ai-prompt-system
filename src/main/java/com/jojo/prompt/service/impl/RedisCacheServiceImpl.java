@@ -1,5 +1,6 @@
 package com.jojo.prompt.service.impl;
 
+import com.jojo.prompt.common.mq.producer.PromptMqProducer;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Category;
 import com.jojo.prompt.mapper.PromptMapper;
@@ -29,6 +30,8 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     private final DefaultRedisScript<List> countSnapshotScript;
     private final DefaultRedisScript<List> countDeductScript;
     private final DefaultRedisScript<Long> unlockScript;
+    //消息队列
+    private final PromptMqProducer promptMqProducer;
 
     @Override
     public void cachePromptDetail(Long promptId, PromptVO promptVO) {
@@ -64,7 +67,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_VIEW_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "view", 1.0);
         return count;
     }
@@ -74,7 +77,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "like", 1.0);
         return count;
     }
@@ -84,7 +87,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "favorite", 1.0);
         return count;
     }
@@ -94,7 +97,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_COPY_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "copy", 1.0);
         return count;
     }
@@ -104,7 +107,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "like", -1.0);
         return count;
     }
@@ -114,7 +117,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
-        addDirtyPromptId(promptId);
+        markDirtyAndScheduleSync(promptId);
         updateHotRanking(promptId, "favorite", -1.0);
         return count;
     }
@@ -217,6 +220,11 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public void addDirtyPromptId(Long promptId) {
         stringRedisTemplate.opsForSet().add(PROMPT_COUNT_DIRTY_SET, promptId.toString());
         stringRedisTemplate.expire(PROMPT_COUNT_DIRTY_SET, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
+    }
+
+    private void markDirtyAndScheduleSync(Long promptId) {
+        addDirtyPromptId(promptId);
+        promptMqProducer.sendPromptCountSyncMessage(promptId);
     }
 
     @Override

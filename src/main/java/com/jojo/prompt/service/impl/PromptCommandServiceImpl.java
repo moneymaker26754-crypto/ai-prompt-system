@@ -7,6 +7,8 @@ import com.jojo.prompt.common.event.PromptCreateEvent;
 import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.handler.PromptReviewHandler;
+import com.jojo.prompt.common.mq.message.PromptReviewMessage;
+import com.jojo.prompt.common.mq.producer.PromptMqProducer;
 import com.jojo.prompt.common.utils.RequestIdentityUtil;
 import com.jojo.prompt.dto.request.PromptCreateDTO;
 import com.jojo.prompt.dto.request.PromptUpdateDTO;
@@ -20,6 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationAdapter;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 
@@ -36,6 +41,8 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     //2.5版责任链模式
     private final PromptReviewHandler reviewChain;
     private final ApplicationEventPublisher eventPublisher;
+    //消息队列
+    private final PromptMqProducer promptMqProducer;
 
 
     @Override
@@ -43,34 +50,38 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     public Long createPrompt(PromptCreateDTO dto) {
         Long userId = promptPermissionService.requireCurrentUserId();
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
+
         Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
         //通过写入数据
         prompt.setUserId(userId);
-        prompt.setStatus(PromptStatus.ENABLED);
+        prompt.setStatus(PromptStatus.REVIEWING);
         prompt.setViewCount(0);
         prompt.setCopyCount(0);
+        prompt.setLikeCount(0);
+        prompt.setFavoriteCount(0);
         prompt.setVersion(1);
-        //执行审核链
-        try {
-            reviewChain.review(prompt);
-            log.info("prompt check passed: title={}", prompt.getTitle());
-        } catch (Exception e) {
-            log.error("prompt check failed: title={}, reason={}", prompt.getTitle(), e.getMessage());
-            throw e;
-        }
 
-        //审核通过，写入数据库
+        //写入数据库
         promptMapper.insert(prompt);
-
-        PromptCreateEvent event = new PromptCreateEvent(
+        //发布消息
+        eventPublisher.publishEvent(new PromptCreateEvent(
                 prompt.getId(),
                 userId,
                 prompt.getTitle(),
                 LocalDateTime.now()
-
-        );
-
-        eventPublisher.publishEvent(event);
+        ));
+        //先创建成功通过消息队列，异步实现审核链
+        String key = "CREATE";
+        //当前事务真正提交成功才执行这个回调，否则可能会造成消息和数据库状态不一致
+        afterCommit(() -> promptMqProducer.sendPromptReviewMessage(
+                new PromptReviewMessage(
+                        prompt.getId(),
+                        prompt.getVersion(),
+                        key,
+                        userId,
+                        LocalDateTime.now()
+                )
+        ));
 
         return prompt.getId();
     }
@@ -89,20 +100,20 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
 
         Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
-        //执行审核链
-        try {
-            reviewChain.review(prompt);
-            log.info("prompt check passed: title={}", prompt.getTitle());
-        } catch (Exception e) {
-            log.error("prompt check failed: title={}, reason={}", prompt.getTitle(), e.getMessage());
-            throw e;
-        }
-        int rows = promptMapper.updateById(prompt);
-        if (rows == 0) {
-            throw new BusinessException("prompt has been modified by another user");
-        }
-        //删除缓存
+
+        //删除旧缓存
         redisCacheService.deletePromptCache(dto.getId());
+
+        //通过消息队列，异步审核更新操作
+        String key = "UPDATE";
+        afterCommit(() -> promptMqProducer.sendPromptReviewMessage(
+                new PromptReviewMessage(prompt.getId(),
+                        prompt.getVersion(),
+                        key,
+                        userId,
+                        LocalDateTime.now()
+                )
+        ));
     }
 
     @Override
@@ -117,7 +128,7 @@ public class PromptCommandServiceImpl implements PromptCommandService {
             throw new BusinessException(403, "no permission to delete this prompt");
         }
         promptMapper.deleteById(id);
-        //删除缓存
+        //删除旧缓存
         redisCacheService.deletePromptCache(id);
     }
 
@@ -158,7 +169,19 @@ public class PromptCommandServiceImpl implements PromptCommandService {
                         LocalDateTime.now()
                 )
         );
-
         return prompt.getContent();
+    }
+
+    private void afterCommit(Runnable task) {
+        if(TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    task.run();
+                }
+            });
+            return;
+        }
+        task.run();
     }
 }

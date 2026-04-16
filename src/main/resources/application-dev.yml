@@ -8,6 +8,7 @@ spring:
     url: jdbc:mysql://localhost:3306/ai_prompt?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
     username: ${DB_USERNAME:root}
     password: ${DB_PASSWORD:123456}
+
     druid:
       initial-size: 5
       min-idle: 5
@@ -27,6 +28,26 @@ spring:
           enabled: true
           log-slow-sql: true
           slow-sql-millis: 1000
+
+  rabbitmq:
+    host: localhost
+    port: 5672
+    virtual-host: /
+    username: admin
+    password: 123456
+    listener:
+      simple:
+        prefetch: 10
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          multiplier: 2
+
+  prompt:
+    count:
+      sync-delay-ms: 60000
+      rescan-interval-ms: 300000
+
   data:
     redis:
       host: localhost

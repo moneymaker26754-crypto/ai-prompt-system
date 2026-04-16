@@ -7,7 +7,6 @@ import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.entity.PromptLike;
 import com.jojo.prompt.mapper.PromptLikeMapper;
-import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.PromptLikeService;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
@@ -76,11 +75,11 @@ public class PromptLikeServiceImpl implements PromptLikeService {
 
         String action = "like";
 
-        publish(id, userId, action);
+        publishHotEvent(id, userId, action);
+
+        publishLikeEvent(id, userId, prompt.getUserId());
 
     }
-
-
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -109,7 +108,7 @@ public class PromptLikeServiceImpl implements PromptLikeService {
 
         String action = "unlike";
 
-        publish(id, userId, action);
+        publishHotEvent(id, userId, action);
     }
 
     @Override
@@ -131,11 +130,17 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         return count > 0;
     }
 
-    //辅助发布事件
-    private void publish(Long id, Long userId, String action) {
+    //辅助发布热度事件
+    private void publishHotEvent(Long id, Long userId, String action) {
         //发布点赞事件
         PromptHeatEvent event = new PromptHeatEvent(id, userId, action, LocalDateTime.now());
         eventPublisher.publishEvent(event);
-        log.info("publish like event: promptID={}, userId={}", id, userId);
+        log.info("publish heat event: promptId={}, userId={}, action={}", id, userId, action);
+    }
+    //发布点赞事件
+    private void publishLikeEvent(Long id, Long userId, Long authorId) {
+        PromptLikeEvent event = new PromptLikeEvent(id, userId, authorId, LocalDateTime.now());
+        eventPublisher.publishEvent(event);
+        log.info("publish like event: promptID={}, userId={}, authorId={}", id, userId, authorId);
     }
 }

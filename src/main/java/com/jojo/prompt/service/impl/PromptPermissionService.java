@@ -49,7 +49,7 @@ public class PromptPermissionService {
         if (prompt == null) {
             throw new BusinessException("prompt not exist");
         }
-        if (prompt.getStatus() == PromptStatus.DISABLED) {
+        if (prompt.getStatus() != PromptStatus.ENABLED) {
             throw new BusinessException("prompt not exist");
         }
         if (prompt.getVisibility() == PromptVisibility.PRIVATE

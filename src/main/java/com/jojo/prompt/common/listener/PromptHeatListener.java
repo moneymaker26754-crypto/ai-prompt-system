@@ -1,9 +1,6 @@
 package com.jojo.prompt.common.listener;
 
-import com.jojo.prompt.common.event.PromptFavoriteEvent;
 import com.jojo.prompt.common.event.PromptHeatEvent;
-import com.jojo.prompt.common.event.PromptLikeEvent;
-import com.jojo.prompt.entity.Prompt;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +32,7 @@ public class PromptHeatListener {
             default -> 0.0;
         };
 
-        if(delta != 0.0) {
+        if(delta == 0.0) {
             return;
         }
         redisCacheService.updateHotRanking(promptHeatEvent.getPromptId(), type, delta);

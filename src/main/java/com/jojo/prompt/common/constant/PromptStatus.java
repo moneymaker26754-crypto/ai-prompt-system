@@ -9,12 +9,15 @@ import lombok.Getter;
 @AllArgsConstructor
 public enum PromptStatus {
     DISABLED(0, "DISABLED"),
-    ENABLED(1, "ENABLED");
+    ENABLED(1, "ENABLED"),
+    REVIEWING(2, "REVIEWING"),
+    REJECTED(3, "REJECTED");
 
     @EnumValue
     private final Integer code;
     @JsonValue
     private final String desc;
+
 
     public static PromptStatus of(Integer code) {
         if (code == null) {

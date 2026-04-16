@@ -21,10 +21,11 @@ public class BehaviorLogListener {
         log.info("[behaviorLogListener] receive like event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
         //记录到行为分析系统
+        String action = "like";
         try {
             logBehavior(
                     event.getUserId(),
-                    "like",
+                    action,
                     event.getPromptId(),
                     event.getLikeTime()
             );
@@ -42,10 +43,11 @@ public class BehaviorLogListener {
         log.info("[behaviorLogListener] receive favorite event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
         //记录到行为分析系统
+        String action = "favorite";
         try {
             logBehavior(
                     event.getUserId(),
-                    "favorite",
+                    action,
                     event.getPromptId(),
                     event.getFavoriteTime()
             );
@@ -63,10 +65,11 @@ public class BehaviorLogListener {
         log.info("[behaviorLogListener] receive create event : userId={}, promptId={},",
                 event.getUserId(), event.getPromptId());
         //记录到行为分析系统
+        String action = "create";
         try {
             logBehavior(
                     event.getUserId(),
-                    "create",
+                    action,
                     event.getPromptId(),
                     event.getCreateTime()
             );
