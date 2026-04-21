@@ -13,6 +13,15 @@ import java.util.List;
 @Mapper
 public interface PromptMapper extends BaseMapper<Prompt> {
 
+    //更新操作
+    int updatePromptByIdAndVersion(@Param("id") Long id,
+                                   @Param("title") String title,
+                                   @Param("content") String content,
+                                   @Param("categoryId") Long categoryId,
+                                   @Param("visibility") PromptVisibility visibility,
+                                   @Param("status") PromptStatus status,
+                                   @Param("expectedVersion") Integer expectedVersion);
+
     Page<Prompt> searchMyFullText(Page<Prompt> page,
                                   @Param("userId") Long userId,
                                   @Param("keyword") String keyword);
@@ -32,4 +41,6 @@ public interface PromptMapper extends BaseMapper<Prompt> {
                                     @Param("expectedVersion") Integer expectedVersion,
                                     @Param("sourceStatus") PromptStatus sourceStatus,
                                     @Param("targetStatus") PromptStatus targetStatus);
+
+
 }

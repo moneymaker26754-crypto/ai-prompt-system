@@ -39,14 +39,18 @@ spring:
       simple:
         prefetch: 10
         acknowledge-mode: auto
+        default-requeue-rejected: false
         retry:
           enabled: true
+          initial-interval: 1000
+          max-attempts: 4
+          max-interval: 10000
           multiplier: 2
 
-  prompt:
-    count:
-      sync-delay-ms: 60000
-      rescan-interval-ms: 300000
+prompt:
+  count:
+    sync-delay-ms: 60000
+    rescan-interval-ms: 300000
 
   data:
     redis:

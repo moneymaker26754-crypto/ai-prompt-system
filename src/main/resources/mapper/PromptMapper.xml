@@ -18,8 +18,22 @@
         set status = #{targetStatus}
         where id = #{id}
         and version = #{expectedVersion}
-        and status = {sourceStatus}
+        and status = #{sourceStatus}
         and deleted = 0
+    </update>
+
+    <update id="updatePromptByIdAndVersion">
+        update prompt
+        set title = #{title},
+            content = #{content},
+            category_id = #{categoryId},
+            visibility = #{visibility},
+            status = #{status},
+            version = version + 1,
+            update_time = now()
+        where id = #{id}
+          and version = #{expectedVersion}
+          and deleted = 0
     </update>
 
     <select id="searchMyFullText" resultType="com.jojo.prompt.entity.Prompt">

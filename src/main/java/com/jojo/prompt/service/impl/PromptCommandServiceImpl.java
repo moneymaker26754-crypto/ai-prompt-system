@@ -23,7 +23,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationAdapter;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
@@ -73,7 +72,7 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         //先创建成功通过消息队列，异步实现审核链
         String key = "CREATE";
         //当前事务真正提交成功才执行这个回调，否则可能会造成消息和数据库状态不一致
-        afterCommit(() -> promptMqProducer.sendPromptReviewMessage(
+        afterCommit(() -> sendPromptReviewMessageSafely(
                 new PromptReviewMessage(
                         prompt.getId(),
                         prompt.getVersion(),
@@ -87,6 +86,7 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void updatePrompt(PromptUpdateDTO dto) {
         Prompt existing = promptMapper.selectById(dto.getId());
         if (existing == null) {
@@ -99,16 +99,30 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         }
         promptPermissionService.validateCategoryExists(dto.getCategoryId());
 
-        Prompt prompt = BeanUtil.copyProperties(dto, Prompt.class);
+        // 更新后重新进入审核中
+        int rows = promptMapper.updatePromptByIdAndVersion(
+                dto.getId(),
+                dto.getTitle(),
+                dto.getContent(),
+                dto.getCategoryId(),
+                dto.getVisibility(),
+                PromptStatus.REVIEWING,
+                dto.getVersion()
+        );
+
+        if (rows == 0) {
+            throw new BusinessException("prompt has been modified by others, please refresh and retry");
+        }
 
         //删除旧缓存
         redisCacheService.deletePromptCache(dto.getId());
 
         //通过消息队列，异步审核更新操作
         String key = "UPDATE";
-        afterCommit(() -> promptMqProducer.sendPromptReviewMessage(
-                new PromptReviewMessage(prompt.getId(),
-                        prompt.getVersion(),
+        afterCommit(() -> sendPromptReviewMessageSafely(
+                new PromptReviewMessage(
+                        dto.getId(),
+                        dto.getVersion() + 1,
                         key,
                         userId,
                         LocalDateTime.now()
@@ -173,15 +187,34 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     }
 
     private void afterCommit(Runnable task) {
-        if(TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            Runnable safeTask = () -> {
+                try {
                     task.run();
+                } catch (Exception ex) {
+                    log.error("afterCommit task failed", ex);
                 }
-            });
-            return;
+            };
+
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        task.run();
+                    }
+                });
+                return;
+            }
+            safeTask.run();
         }
-        task.run();
     }
+
+    private void sendPromptReviewMessageSafely(PromptReviewMessage message) {
+        boolean success = promptMqProducer.sendPromptReviewMessageWithRetry(message);
+        if (!success) {
+            log.error("prompt review message send failed after commit, promptId={}, expectedVersion={}, action={}",
+                    message.promptId(), message.expectedVersion(), message.operationType());
+        }
+    }
+
 }
