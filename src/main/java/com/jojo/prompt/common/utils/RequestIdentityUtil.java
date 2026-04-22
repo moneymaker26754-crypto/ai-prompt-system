@@ -21,6 +21,15 @@ public final class RequestIdentityUtil {
         return "ip:" + getClientIp(request);
     }
 
+    public static String buildLoginIdentifier(HttpServletRequest request) {
+        return "ip:" + getClientIp(request);
+    }
+
+    public static String buildLoginFailIdentifier(String username, HttpServletRequest request) {
+        String normalizedUsername = username == null ? "" : username.trim().toLowerCase();
+        return normalizedUsername + ":" + buildLoginIdentifier(request);
+    }
+
     public static String getClientIp(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isBlank()) {

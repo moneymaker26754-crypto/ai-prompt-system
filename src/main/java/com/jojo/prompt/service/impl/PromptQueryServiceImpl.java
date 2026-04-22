@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static com.jojo.prompt.common.constant.RedisKeyConstant.*;
@@ -51,29 +52,38 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     private final ApplicationEventPublisher eventPublisher;
 
 
-    //2.0引入redis，应对缓存穿透和雪崩
+    //2.0引入redis，应对缓存穿透和雪崩，缓存读写分离做降级策略
     @Override
     public PromptVO queryPromptById(Long id) {
         Long currentUserId = promptPermissionService.getCurrentUserIdOrNull();
-        if (redisCacheService.isPromptNullCache(id)) {
+//        if (redisCacheService.isPromptNullCache(id)) {
+//            throw new BusinessException(404, "prompt not exist");
+//        }
+
+        boolean nullCache = redisRead("prompt-null-check",
+                () -> redisCacheService.isPromptNullCache(id), false);
+        if(nullCache){
             throw new BusinessException(404, "prompt not exist");
         }
         //先查询缓存
-        PromptVO cacheVO = redisCacheService.getPromptDetailCache(id);
+        PromptVO cacheVO = redisRead("prompt-detail-get",
+                () -> redisCacheService.getPromptDetailCache(id), null);
+//        PromptVO cacheVO = redisCacheService.getPromptDetailCache(id);
         if (cacheVO != null) {
             //命中缓存拷贝对象，防止污染缓存
             PromptVO result = BeanUtil.copyProperties(cacheVO, PromptVO.class);
             //非本人查询才计数viewCount
             boolean owner = currentUserId != null && currentUserId.equals(result.getUserId());
             if (!owner) {
-                redisCacheService.incrementViewCount(id);
+//                redisCacheService.incrementViewCount(id);
+                redisWrite("view-count-increment", () -> redisCacheService.incrementViewCount(id));
             }
             //无论是否owner，都merge实时计数
             promptInteractionAssembler.mergeRedisCountsToVO(result, id);
             //设置补充当前用户的点赞/收藏状态
             if (currentUserId != null) {
-                result.setIsLike(redisCacheService.isUserLiked(currentUserId, id));
-                result.setIsFavorite(redisCacheService.isUserFavorite(currentUserId, id));
+                result.setIsLike(promptLikeService.isLiked(id, currentUserId));
+                result.setIsFavorite(promptFavoriteService.isFavoritePrompt(id, currentUserId));
             } else {
                 result.setIsLike(false);
                 result.setIsFavorite(false);
@@ -94,7 +104,7 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         //缓存未命中，查数据库
         Prompt prompt = promptMapper.selectById(id);
         if (prompt == null) {
-            redisCacheService.cachePromptNull(id);
+            redisWrite("prompt-null-cache", () -> redisCacheService.cachePromptNull(id));
             throw new BusinessException(404, "prompt not exist");
         }
         boolean owner = currentUserId != null && currentUserId.equals(prompt.getUserId());
@@ -110,7 +120,9 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         PromptVO vo = promptConverter.toVO(prompt, categoryMapper.selectById(prompt.getCategoryId()));
         //非本人查询才计数viewCount
         if (!owner) {
-            redisCacheService.incrementViewCount(id);
+//            redisCacheService.incrementViewCount(id);
+            redisWrite("view-count-increment", () -> redisCacheService.incrementViewCount(id));
+
         }
         //无论是否owner，都merge实时计数
         promptInteractionAssembler.mergeRedisCountsToVO(vo, id);
@@ -123,7 +135,7 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         }
         //只用公开的和启用的用户才能写入缓存
         if (prompt.getVisibility() == PromptVisibility.PUBLIC && prompt.getStatus() == PromptStatus.ENABLED) {
-            redisCacheService.cachePromptDetail(id, vo);
+            redisWrite("prompt-detail-cache", () -> redisCacheService.cachePromptDetail(id, vo));
         }
 
         return vo;
@@ -179,9 +191,17 @@ public class PromptQueryServiceImpl implements PromptQueryService {
 
     public List<PromptVO> getHotList(String type, int limit) {
         //2.0不污染热门榜单浏览量的方法
-        List<Long> hotIds = redisCacheService.getHotRanking(type, limit);
+        //try-catch包围，缓存失效时查询数据库
+        List<Long> hotIds;
+        try {
+            hotIds = redisCacheService.getHotRanking(type, limit);
+        } catch (Exception e) {
+            log.warn("get hot ranking from redis failed, fallback db, type={}, limit={}", type, limit, e);
+            return getHotListFromDb(type, limit);
+        }
         if (hotIds == null || hotIds.isEmpty()) {
-            return Collections.emptyList();
+            log.info("hot ranking cache empty, fallback db, type={}, limit={}", type, limit);
+            return getHotListFromDb(type, limit);
         }
 
         List<Prompt> prompts = promptMapper.selectByIds(hotIds);
@@ -224,6 +244,38 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         return voList;
     }
 
+
+    //缓存失效时回调数据库的降级策略
+    private List<PromptVO> getHotListFromDb(String type, int limit) {
+        LambdaQueryWrapper<Prompt> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Prompt::getVisibility, PromptVisibility.PUBLIC);
+        wrapper.eq(Prompt::getStatus, PromptStatus.ENABLED);
+
+        switch (type) {
+            case "like" -> wrapper.orderByDesc(Prompt::getLikeCount);
+            case "favorite" -> wrapper.orderByDesc(Prompt::getFavoriteCount);
+            case "copy" -> wrapper.orderByDesc(Prompt::getCopyCount);
+            default -> wrapper.orderByDesc(Prompt::getViewCount);
+        }
+        wrapper.orderByDesc(Prompt::getCreateTime);
+        wrapper.last("limit " + limit);
+
+        List<Prompt> prompts = promptMapper.selectList(wrapper);
+        if (prompts == null || prompts.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<PromptVO> voList = prompts.stream()
+                .map(prompt -> {
+                    PromptVO vo = promptConverter.toVO(prompt);
+                    promptInteractionAssembler.mergeRedisCountsToVO(vo, prompt.getId());
+                    return vo;
+                })
+                .toList();
+
+        promptInteractionAssembler.fillUserStatus(voList, prompts);
+        return voList;
+    }
 
     //辅助查询条件公共的分页逻辑
     public LambdaQueryWrapper<Prompt> buildPublicQueryWrapper(PromptQueryDTO query) {
@@ -308,6 +360,23 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         );
         if(!allowed) {
             throw new BusinessException(429, "search too frequent, please try again later");
+        }
+    }
+
+    //搜索降级
+    private <T> T redisRead(String scene, Supplier<T> supplier, T fallback) {
+        try {
+            return supplier.get();
+        }catch (Exception e) {
+            log.warn("redis read failed, scene={}, fallback used", scene, e);
+            return fallback;
+        }
+    }
+    private void redisWrite(String scene, Runnable runnable) {
+        try {
+            runnable.run();
+        }catch (Exception e) {
+            log.warn("redis write failed, scene={}, ignored",  scene, e);
         }
     }
 }

@@ -167,8 +167,13 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
     @Override
     public boolean isFavoritePrompt(Long id, Long userId) {
         //先查redis
-        if(redisCacheService.isUserFavorite(userId, id)){
-            return true;
+        //try-catch包围做降级，缓存失败时查询回退DB
+        try {
+            if(redisCacheService.isUserFavorite(userId, id)){
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("read favorite cache failed, fallback db, userId={}, promptId={}", userId, id, e);
         }
         Long count = promptFavoriteMapper.selectCount(
                 new LambdaQueryWrapper<PromptFavorite>()
@@ -178,7 +183,11 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
         // 补充缓存
         if (count > 0) {
-            redisCacheService.addUserFavorite(userId, id);
+            try {
+                redisCacheService.addUserFavorite(userId, id);
+            } catch (Exception e) {
+                log.warn("write favorite cache failed, ignored, userId={}, promptId={}", userId, id, e);
+            }
         }
 
         return count > 0;

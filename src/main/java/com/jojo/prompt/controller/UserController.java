@@ -10,6 +10,7 @@ import com.jojo.prompt.dto.response.UserVO;
 import com.jojo.prompt.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -30,8 +31,8 @@ public class UserController {
     }
     @Operation(summary = "用户登录")
     @PostMapping("/login")
-    public Result<LoginVO> login(@RequestBody @Valid LoginDTO dto) {
-        LoginVO loginVO = userService.login(dto);
+    public Result<LoginVO> login(@RequestBody @Valid LoginDTO dto, HttpServletRequest request) {
+        LoginVO loginVO = userService.login(dto, request);
         return Result.success("login success",loginVO);
     }
     @Operation(summary = "获取当前登录用户信息")

@@ -386,6 +386,50 @@ public class RedisCacheServiceImpl implements RedisCacheService {
         return  Boolean.TRUE.equals(isSuccess);
     }
 
+    @Override
+    public boolean tryLoginAllowed(String ipIdentifier, long limit, long windowSeconds) {
+        String key = RATE_LIMIT_LOGIN_IP + ipIdentifier;
+        Long count = stringRedisTemplate.opsForValue().increment(key);
+        if(count == null) {
+            return false;
+        }
+        if(count == 1L) {
+            stringRedisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
+        }
+        return count <= limit;
+    }
+
+    @Override
+    public boolean isLoginBlocked(String failIdentifier) {
+        return Boolean.TRUE.equals(stringRedisTemplate.hasKey(LOGIN_FAIL_BLOCK +  failIdentifier));
+    }
+
+    @Override
+    public long recordLoginFailure(String failIdentifier, long windowSeconds, long threshold, long blockSeconds) {
+        String failKey = LOGIN_FAIL_COUNT + failIdentifier;
+        Long count = stringRedisTemplate.opsForValue().increment(failKey);
+        if(count != null && count == 1L) {
+            stringRedisTemplate.expire(failKey, windowSeconds, TimeUnit.SECONDS);
+        }
+        if(count != null && count >=  threshold) {
+            stringRedisTemplate.opsForValue().set(
+                    LOGIN_FAIL_BLOCK + failIdentifier,
+                    "1",
+                    blockSeconds,
+                    TimeUnit.SECONDS
+            );
+        }
+        return count == null ? 0 : count;
+    }
+
+    @Override
+    public void clearLoginFailure(String failIdentifier) {
+        stringRedisTemplate.delete(List.of(
+                LOGIN_FAIL_COUNT + failIdentifier,
+                LOGIN_FAIL_BLOCK + failIdentifier
+        ));
+    }
+
 
     private long jitter(long baseSeconds) {
         return baseSeconds + ThreadLocalRandom.current().nextInt(300);

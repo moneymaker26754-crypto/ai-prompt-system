@@ -6,12 +6,13 @@ import com.jojo.prompt.dto.request.RegisterDTO;
 import com.jojo.prompt.dto.request.UserUpdateDTO;
 import com.jojo.prompt.dto.response.LoginVO;
 import com.jojo.prompt.dto.response.UserVO;
+import jakarta.servlet.http.HttpServletRequest;
 
 public interface UserService {
     //用户注册
     void register(RegisterDTO dto);
     //用户登录
-    LoginVO login(LoginDTO dto);
+    LoginVO login(LoginDTO dto, HttpServletRequest request);
     //获取当前登录用户信息
     UserVO getCurrentUser();
     //更新用户信息

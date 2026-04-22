@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.jojo.prompt.common.constant.UserStatus;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.utils.JwtUtil;
+import com.jojo.prompt.common.utils.RequestIdentityUtil;
 import com.jojo.prompt.converter.UserConverter;
 import com.jojo.prompt.dto.request.LoginDTO;
 import com.jojo.prompt.dto.request.PasswordUpdateDTO;
@@ -15,11 +16,15 @@ import com.jojo.prompt.dto.response.UserVO;
 import com.jojo.prompt.entity.User;
 import com.jojo.prompt.mapper.UserMapper;
 import com.jojo.prompt.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import static com.jojo.prompt.common.constant.RedisKeyConstant.*;
 
 @Slf4j
 @Service
@@ -30,6 +35,9 @@ public class UserServiceImpl implements UserService {
     private final JwtUtil jwtUtil;
     private final BCryptPasswordEncoder passwordEncoder;
     private final PromptPermissionService promptPermissionService;
+
+    //登陆限流
+    private final RedisCacheServiceImpl redisCacheService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -58,21 +66,41 @@ public class UserServiceImpl implements UserService {
         log.info("register username:{}, userId:{}", user.getUsername(), user.getId());
     }
 
+    //增加登录的限流操作和防暴力破解
     @Override
-    public LoginVO login(LoginDTO dto) {
+    public LoginVO login(LoginDTO dto, HttpServletRequest request) {
+        String ipIdentifier = RequestIdentityUtil.buildLoginIdentifier(request);
+        if(!redisCacheService.tryLoginAllowed(ipIdentifier, LOGIN_LIMIT_PRE_MINUTE, RATE_LIMIT_EXPIRE_1MIN)) {
+            throw new BusinessException(429, "login too frequent, please try again later");
+        }
+
+        String failIdentifier = RequestIdentityUtil.buildLoginFailIdentifier(dto.getUsername(), request);
+        if(redisCacheService.isLoginBlocked(failIdentifier)) {
+            throw new BusinessException(429, "account is temporarily locked, please try again later");
+        }
+
         User user = userMapper.selectOne(
                 new LambdaQueryWrapper<User>()
                         .eq(User::getUsername, dto.getUsername())
         );
-        if (user == null) {
-            throw new BusinessException("username or password is incorrect");//防止泄露用户是否存在
+        //防止泄露用户是否存在，防止泄露密码
+        if (user == null || !passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
+            long failCount = redisCacheService.recordLoginFailure(
+                    failIdentifier,
+                    LOGIN_FAIL_WINDOW_SECONDS,
+                    LOGIN_FAIL_THRESHOLD,
+                    LOGIN_BLOCK_SECONDS
+            );
+            if(failCount >= LOGIN_FAIL_THRESHOLD) {
+                throw new BusinessException(429, "account is temporarily locked, please try again later");
+            }
+            throw new BusinessException("username or password is incorrect");
         }
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new BusinessException("username or password is incorrect");//防止泄露密码
-        }
+
         if (user.getStatus() == UserStatus.DISABLE) {
             throw new BusinessException("user is DISABLE");
         }
+        redisCacheService.clearLoginFailure(failIdentifier);
 
         String token = jwtUtil.createToken(user.getId(), user.getUsername());
         UserVO userVO = userConverter.toVO(user);

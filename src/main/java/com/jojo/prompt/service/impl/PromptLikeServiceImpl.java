@@ -114,8 +114,13 @@ public class PromptLikeServiceImpl implements PromptLikeService {
     @Override
     public boolean isLiked(Long id, Long userId) {
         //先查redis
-        if(redisCacheService.isUserLiked(userId, id)) {
-            return true;
+        //try-catch包围做降级，缓存失败时查询回退DB
+        try {
+            if(redisCacheService.isUserLiked(userId, id)) {
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("read like cache failed, fallback db, userId={}, promptId={}", userId, id, e);
         }
         Long count = promptLikeMapper.selectCount(
                 new LambdaQueryWrapper<PromptLike>()
@@ -124,7 +129,11 @@ public class PromptLikeServiceImpl implements PromptLikeService {
         );
         //补充缓存
         if(count > 0) {
-            redisCacheService.addUserLike(userId, id);
+            try {
+                redisCacheService.addUserLike(userId, id);
+            } catch (Exception e) {
+                log.warn("write like cache failed, ignored, userId={}, promptId={}", userId, id, e);
+            }
         }
 
         return count > 0;

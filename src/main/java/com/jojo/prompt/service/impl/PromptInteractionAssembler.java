@@ -95,10 +95,14 @@ public class PromptInteractionAssembler {
     }
 
     public void mergeRedisCountsToVO(PromptVO vo, Long promptId) {
-        Map<String, Long> counts = redisCacheService.getPromptCounts(promptId);
-        vo.setViewCount(mergeCount(vo.getViewCount(), counts.get("viewCount")));
-        vo.setLikeCount(mergeCount(vo.getLikeCount(), counts.get("likeCount")));
-        vo.setFavoriteCount(mergeCount(vo.getFavoriteCount(), counts.get("favoriteCount")));
-        vo.setCopyCount(mergeCount(vo.getCopyCount(), counts.get("copyCount")));
+        try {
+            Map<String, Long> counts = redisCacheService.getPromptCounts(promptId);
+            vo.setViewCount(mergeCount(vo.getViewCount(), counts.get("viewCount")));
+            vo.setLikeCount(mergeCount(vo.getLikeCount(), counts.get("likeCount")));
+            vo.setFavoriteCount(mergeCount(vo.getFavoriteCount(), counts.get("favoriteCount")));
+            vo.setCopyCount(mergeCount(vo.getCopyCount(), counts.get("copyCount")));
+        } catch (Exception e) {
+            log.warn("merge redis counts failed, use db counts, promptId={}", promptId, e);
+        }
     }
 }

@@ -52,6 +52,15 @@ public interface RedisKeyConstant {
     //复制去重
     String COPY_DEDUP = "prompt:copy:dedup:";
     long COPY_DEDUP_WINDOW_SECONDS = 60L;
+    //登录限流
+    String RATE_LIMIT_LOGIN_IP = "rate:limit:login:ip:";
+    String LOGIN_FAIL_COUNT = "login:fail:count:";
+    String LOGIN_FAIL_BLOCK = "login:fail:block:";
+
+    long LOGIN_LIMIT_PRE_MINUTE = 20L;
+    long LOGIN_FAIL_THRESHOLD = 5L;
+    long LOGIN_FAIL_WINDOW_SECONDS = 10 * 60L;
+    long LOGIN_BLOCK_SECONDS = 15 * 60L;
 
     //缓存过期时间基础值（秒），使用时需通过 jitter() 动态加随机偏移防止缓存雪崩
     long CACHE_EXPIRE_30MIN = 30 * 60;

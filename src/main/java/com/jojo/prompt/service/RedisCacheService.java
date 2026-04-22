@@ -58,5 +58,11 @@ public interface RedisCacheService {
 
     //限流相关
     boolean trySearchAllowed(String identifier, long limit, long windowSeconds);
+
     boolean tryRecordCopyCount(String identifier, Long promptId, long windowSeconds);
+
+    boolean tryLoginAllowed(String ipIdentifier, long limit, long windowSeconds);
+    boolean isLoginBlocked(String failIdentifier);
+    long recordLoginFailure(String failIdentifier, long windowSeconds, long threshold, long blockSeconds);
+    void clearLoginFailure(String failIdentifier);
 }
