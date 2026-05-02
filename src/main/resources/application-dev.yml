@@ -47,6 +47,17 @@ spring:
           max-interval: 10000
           multiplier: 2
 
+  ai:
+    model:
+      chat: ollama
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        options:
+          model: ${OLLAMA_MODEL:qwen3.5:9b}
+          temperature: 0.3
+
+
 prompt:
   count:
     sync-delay-ms: 60000

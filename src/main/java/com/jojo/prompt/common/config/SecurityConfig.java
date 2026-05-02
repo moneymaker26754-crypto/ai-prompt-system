@@ -42,9 +42,14 @@ public class SecurityConfig {
                                 "/api/categories/*",
                                 "/api/search/hot",
                                 "/doc.html",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
                                 "/swagger-resource/**",
+                                "/swagger-resources",
+                                "/swagger-resources/**",
                                 "/v3/api-docs/**",
                                 "/webjars/**",
+                                "/favicon.ico",
                                 "/druid/**"
 
                         ).permitAll().anyRequest().authenticated())
