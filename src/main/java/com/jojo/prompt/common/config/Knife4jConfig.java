@@ -15,9 +15,9 @@ public class Knife4jConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("AI提示词管理系统")
-                        .version("v2.0.0")
-                        .description("提供提示词的增删改查、分类管理等功能")
+                        .title("AI提示词优化管理系统")
+                        .version("v3.0.0")
+                        .description("提供提示词的增删改查、分类管理等功能以及ai提示词优化")
                         .contact(new Contact()
                                 .name("jojo")
                                 .email("3340832764@qq.com")))
