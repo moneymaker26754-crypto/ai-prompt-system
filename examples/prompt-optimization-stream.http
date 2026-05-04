@@ -1,0 +1,46 @@
+@host = http://localhost:8080
+@username = zhangsan
+@password = 123456
+@token = 请先登录后替换这里
+@templateId = 1
+@recordId = 1
+
+### 1. 登录获取 JWT
+POST {{host}}/api/user/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### 2. 测试流式优化接口
+POST {{host}}/api/prompt-optimizations/stream
+Authorization: Bearer {{token}}
+Accept: text/event-stream
+Content-Type: application/json
+
+{
+  "templateId": {{templateId}},
+  "originalPrompt": "请为一款面向大学生的 AI 笔记软件生成产品介绍文案",
+  "target": "提升表达清晰度，并明确输出结构",
+  "outputFormat": "分点输出，包含标题、核心卖点、结尾行动号召"
+}
+
+### 预期会持续收到 SSE 事件，阶段通常包括：
+### REVIEW -> ANALYSIS -> OPTIMIZING -> TOKEN(多次) -> DONE
+### DONE 事件 content 示例：
+### {"recordId":1,"score":85,"riskLevel":"LOW"}
+
+### 3. 将优化结果保存为正式 Prompt
+POST {{host}}/api/prompt-optimizations/confirm
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "recordId": {{recordId}},
+  "title": "AI 笔记软件产品介绍文案优化版",
+  "categoryId": 1,
+  "tags": "AI,文案,产品介绍",
+  "visibility": "public"
+}

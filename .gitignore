@@ -1,5 +1,8 @@
 HELP.md
 target/
+.m2-temp/
+jmeter.log
+performance/jmeter/qps/runs/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
