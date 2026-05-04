@@ -2,7 +2,7 @@
 
 一个基于 `Spring Boot 3` + `Java 21` 的 Prompt 管理与优化后端项目。
 
-它的目标不是只做一个“调用一次大模型”的 Demo，而是把 Prompt 的创建、审核、查询、互动计数、热度排行，以及 AI 优化工作流串成一套完整的后端系统。
+涵盖了 Prompt 的创建、审核、查询、互动计数、热度排行，以及 AI 优化工作流串成一套完整的后端系统。
 
 ## 项目定位
 
@@ -312,27 +312,9 @@ Windows:
 - 点赞 / 收藏服务
 - Prompt 优化查询逻辑
 
-## 当前仓库整理说明
-
-本次已清理掉以下不应长期放在项目仓库里的内容：
-
-- 本地 IDE 配置目录
-- `target/` 构建产物
-- `.m2-temp/` 本地 Maven 依赖缓存
-- `jmeter.log`
-- 空的压测运行目录
-- Spring Boot 默认生成的 `HELP.md`
-- 一个误暂存的 `PromptOptimizationStreamService.xml`
-
-同时已将以下内容加入忽略规则：
-
-- `.m2-temp/`
-- `jmeter.log`
-- `performance/jmeter/qps/runs/`
-
 ## 当前已知缺口
 
-这个项目已经具备不错的实习项目完成度，但仍有一些明显缺口：
+有一些明显缺口：
 
 - 仓库中暂未提供数据库初始化 SQL / DDL
 - 没有 `docker-compose`，本地依赖需要手动准备
@@ -340,8 +322,3 @@ Windows:
 - 部分源码中的中文注释和 Swagger 文案存在编码问题
 - Agent 能力更偏“固定工作流编排”，不是通用 Agent 框架
 
-## 适合如何介绍这个项目
-
-如果用于简历或面试，建议这样描述：
-
-> 这是一个基于 Spring Boot 的 Prompt 内容平台后端，集成了 Redis、RabbitMQ 和 Spring AI，实现了 Prompt 发布审核、互动计数异步同步、热门排行，以及 Prompt 分析-优化-复核的 AI 工作流，并支持 SSE 流式返回优化结果。
