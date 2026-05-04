@@ -8,6 +8,7 @@ import com.jojo.prompt.dto.response.PromptOptimizeVO;
 import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
+import com.jojo.prompt.service.PromptCommandService;
 import com.jojo.prompt.service.agent.PromptAnalyzeAgent;
 import com.jojo.prompt.service.agent.PromptOptimizeAgent;
 import com.jojo.prompt.service.agent.PromptReviewAgent;
@@ -46,6 +47,9 @@ class PromptOptimizationServiceImplTest {
     @Mock
     private PromptReviewAgent promptReviewAgent;
 
+    @Mock
+    private PromptCommandService promptCommandService;
+
     private PromptOptimizationServiceImpl promptOptimizationService;
 
     @BeforeEach
@@ -66,6 +70,7 @@ class PromptOptimizationServiceImplTest {
                 promptReviewAgent,
                 promptOptimizationConverter,
                 objectMapper,
+                promptCommandService,
                 chatOptions
         );
     }

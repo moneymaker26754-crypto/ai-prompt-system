@@ -1,6 +1,7 @@
 package com.jojo.prompt.common.config;
 
 import com.jojo.prompt.common.filter.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +32,7 @@ public class SecurityConfig {
                 .httpBasic(httpBasicAuth -> httpBasicAuth.disable())
                 .sessionManagement(sessionManagement -> sessionManagement.disable())
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/api/user/register",
                                 "/api/user/login",

@@ -1,5 +1,6 @@
 package com.jojo.prompt.service.agent;
 
+
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.utils.PromptTemplateRenderUtil;
 import com.jojo.prompt.dto.request.PromptOptimizeRequestDTO;
@@ -10,12 +11,14 @@ import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import reactor.core.publisher.Flux;
 
 import java.util.Map;
 
+//第二版新增流式Agent
 @Service
 @RequiredArgsConstructor
-public class PromptOptimizeAgent {
+public class PromptOptimizeStreamAgent {
 
     private static final String OPTIMIZE_PROMPT = """
             请基于以下信息优化提示词，并且只返回优化后的提示词内容，不要附加解释、标题或 Markdown。
@@ -36,12 +39,14 @@ public class PromptOptimizeAgent {
             {{analysisResult}}
             """;
 
-    private final ChatClient chatClient;
+    public final ChatClient chatClient;
 
     @Qualifier("promptOptimizeOllamaChatOptions")
     private final OllamaChatOptions promptOptimizeOllamaChatOptions;
 
-    public String optimize(PromptOptimizeRequestDTO dto, PromptTemplate template, String analysisResult) {
+    public Flux<String> optimizeStream(PromptOptimizeRequestDTO dto,
+                                       PromptTemplate template,
+                                       String analysisResult) {
         String userPrompt = PromptTemplateRenderUtil.render(
                 OPTIMIZE_PROMPT,
                 Map.of(
@@ -57,17 +62,16 @@ public class PromptOptimizeAgent {
                 )
         );
 
-        String content = chatClient.prompt()
+        if (!StringUtils.hasText(userPrompt)) {
+            throw new BusinessException("prompt optimize request is empty");
+        }
+
+        return chatClient.prompt()
                 .options(promptOptimizeOllamaChatOptions)
                 .system(defaultIfBlank(template == null ? null : template.getSystemPrompt(), ""))
                 .user(userPrompt)
-                .call()
+                .stream()
                 .content();
-
-        if (!StringUtils.hasText(content)) {
-            throw new BusinessException("prompt optimize result is empty");
-        }
-        return content.trim();
     }
 
     private String defaultIfBlank(String value, String fallback) {

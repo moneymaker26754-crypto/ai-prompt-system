@@ -6,12 +6,16 @@ import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.handler.optimization.PromptOptimizeReviewContext;
 import com.jojo.prompt.common.handler.optimization.PromptOptimizeReviewHandler;
 import com.jojo.prompt.converter.PromptOptimizationConverter;
+import com.jojo.prompt.dto.request.PromptCreateDTO;
+import com.jojo.prompt.dto.request.PromptOptimizeConfirmDTO;
 import com.jojo.prompt.dto.request.PromptOptimizeRequestDTO;
+import com.jojo.prompt.dto.response.PromptOptimizeReviewResult;
 import com.jojo.prompt.dto.response.PromptOptimizeVO;
 import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.entity.PromptTemplate;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
+import com.jojo.prompt.service.PromptCommandService;
 import com.jojo.prompt.service.PromptOptimizationService;
 import com.jojo.prompt.service.agent.PromptAnalyzeAgent;
 import com.jojo.prompt.service.agent.PromptOptimizeAgent;
@@ -23,19 +27,13 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PromptOptimizationServiceImpl implements PromptOptimizationService {
 
-    private static final Pattern SCORE_PATTERN = Pattern.compile("Score\\s*:\\s*(\\d{1,3})",
-            Pattern.CASE_INSENSITIVE);
-
     private final PromptTemplateMapper promptTemplateMapper;
-    private final PromptOptimizationRecordMapper promptOptimizationRecordMapper;
+    private final PromptOptimizationRecordMapper recordMapper;
     private final PromptPermissionService promptPermissionService;
     private final PromptOptimizeReviewHandler promptOptimizeReviewChain;
     private final PromptAnalyzeAgent promptAnalyzeAgent;
@@ -43,6 +41,8 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
     private final ObjectMapper objectMapper;
+    //用于创建优化好厚的Prompt
+    private final PromptCommandService promptCommandService;
 
     @Qualifier("promptOptimizeOllamaChatOptions")
     private final OllamaChatOptions promptOptimizeOllamaChatOptions;
@@ -83,17 +83,17 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             log.info("prompt optimize done");
 
             log.info("prompt review start");
-            String reviewResult = promptReviewAgent.review(dto.getOriginalPrompt(), optimizedPrompt);
+            PromptOptimizeReviewResult review = promptReviewAgent.review(dto.getOriginalPrompt(), optimizedPrompt);
             log.info("prompt review done");
 
             record.setAnalysisResult(analysisResult);
             record.setOptimizedPrompt(optimizedPrompt);
-            record.setReviewResult(reviewResult);
-            record.setScore(extractScore(reviewResult));
-            record.setRiskLevel(extractRiskLevel(reviewResult));
+            record.setReviewResult(review == null ? null : review.getReviewComment());
+            record.setScore(extractScore(review));
+            record.setRiskLevel(extractRiskLevel(review));
             record.setReviewReport(writeReviewReport(context));
             record.setStatus("SUCCESS");
-            promptOptimizationRecordMapper.insert(record);
+            recordMapper.insert(record);
 
             log.info("prompt optimize success: recordId={}, templateId={}, userId={}",
                     record.getId(), template.getId(), userId);
@@ -102,7 +102,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             record.setStatus("FAILED");
             record.setErrorMessage(ex.getMessage());
             record.setReviewReport(writeReviewReportQuietly(context));
-            promptOptimizationRecordMapper.insert(record);
+            recordMapper.insert(record);
             log.error("prompt optimize failed: templateId={}, userId={}", template.getId(), userId, ex);
             throw new BusinessException("prompt optimize failed: " + ex.getMessage());
         }
@@ -111,7 +111,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     @Override
     public PromptOptimizeVO getById(Long id) {
         Long userId = promptPermissionService.requireCurrentUserId();
-        PromptOptimizationRecord record = promptOptimizationRecordMapper.selectById(id);
+        PromptOptimizationRecord record = recordMapper.selectById(id);
         if (record == null) {
             throw new BusinessException("prompt optimize record not exist");
         }
@@ -121,22 +121,51 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         return promptOptimizationConverter.toVO(record);
     }
 
-    private Integer extractScore(String review) {
-        Matcher matcher = SCORE_PATTERN.matcher(review == null ? "" : review);
-        if (matcher.find()) {
-            return Math.min(100, Integer.parseInt(matcher.group(1)));
+    @Override
+    public Long confirmAsPrompt(PromptOptimizeConfirmDTO dto) {
+        Long userId = promptPermissionService.requireCurrentUserId();
+
+        PromptOptimizationRecord record = recordMapper.selectById(dto.getRecordId());
+        if (record == null) {
+            throw new BusinessException("optimization record not exist");
         }
-        return 0;
+        if (!userId.equals(record.getUserId())) {
+            throw new BusinessException(403, "no permission");
+        }
+        if (!"SUCCESS".equals(record.getStatus())) {
+            throw new BusinessException("optimization record not ready");
+        }
+        if (!StringUtils.hasText(record.getOptimizedPrompt())) {
+            throw new BusinessException("optimized prompt is empty");
+        }
+
+        PromptCreateDTO createDTO = new PromptCreateDTO();
+        createDTO.setTitle(dto.getTitle());
+        createDTO.setContent(record.getOptimizedPrompt());
+        createDTO.setCategoryId(dto.getCategoryId());
+        createDTO.setTags(dto.getTags());
+        createDTO.setVisibility(dto.getVisibility());
+        return promptCommandService.createPrompt(createDTO);
     }
 
-    private String extractRiskLevel(String review) {
-        if (!StringUtils.hasText(review)) {
+
+    private Integer extractScore(PromptOptimizeReviewResult reviewResult) {
+        if (reviewResult == null || reviewResult.getScore() == null) {
+            return 0;
+        }
+        return Math.max(0, Math.min(100, reviewResult.getScore()));
+    }
+
+    private String extractRiskLevel(PromptOptimizeReviewResult reviewResult) {
+        if (reviewResult == null || !StringUtils.hasText(reviewResult.getRiskLevel())) {
             return "LOW";
         }
-        if (review.contains("HIGH")) {
+
+        String riskLevel = reviewResult.getRiskLevel().toUpperCase();
+        if (riskLevel.contains("HIGH")) {
             return "HIGH";
         }
-        if (review.contains("MEDIUM")) {
+        if (riskLevel.contains("MEDIUM")) {
             return "MEDIUM";
         }
         return "LOW";

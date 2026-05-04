@@ -17,7 +17,7 @@ public class Knife4jConfig {
                 .info(new Info()
                         .title("AI提示词优化管理系统")
                         .version("v3.0.0")
-                        .description("提供提示词的增删改查、分类管理等功能以及ai提示词优化")
+                        .description("提供提示词的增删改查、分类管理以及ai提示词优化等功能")
                         .contact(new Contact()
                                 .name("jojo")
                                 .email("3340832764@qq.com")))
