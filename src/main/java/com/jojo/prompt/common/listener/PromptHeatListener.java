@@ -20,7 +20,7 @@ public class PromptHeatListener {
     @Async("eventExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     //靠hot字段统一监听热门总榜
-    public void onPromptHeatListener(PromptHeatEvent  promptHeatEvent) {
+    public void onPromptHeatListener(PromptHeatEvent promptHeatEvent) {
         String type = "hot";
         double delta = switch(promptHeatEvent.getAction()) {
             case "view" -> 1.0;

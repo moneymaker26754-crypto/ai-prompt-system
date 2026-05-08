@@ -1,7 +1,7 @@
 @host = http://localhost:8080
-@username = zhangsan
-@password = 123456
-@token = 请先登录后替换这里
+@username = gaoxiang
+@password = 88888888
+@token = eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI1OTUwNCIsInVzZXJuYW1lIjoiZ2FveGlhbmciLCJpYXQiOjE3Nzc4Nzc4MjMsImV4cCI6MTc3ODQ4MjYyM30.H65aDK7HAb8pS-_RISJJuqqNSlqRQBdP0KB3_VDkCXzLPNqvPzR-SuUSJXnb1X3Y7mo0-lwlZMVDr3kBe95gRQ
 @templateId = 1
 @recordId = 1
 

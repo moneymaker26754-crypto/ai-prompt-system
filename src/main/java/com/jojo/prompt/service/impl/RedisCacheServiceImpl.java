@@ -144,6 +144,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public boolean syncCountToDb(Long promptId) {
         String lockKey = PROMPT_COUNT_SYNC_LOCK + promptId;
+        //用uuid做幂等操作，保证只同步一次
         String uuid = UUID.randomUUID().toString();
         Boolean locked = tryLock(lockKey, uuid, 30);
         if(!Boolean.TRUE.equals(locked)) {

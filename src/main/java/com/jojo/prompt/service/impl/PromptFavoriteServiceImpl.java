@@ -195,7 +195,7 @@ public class PromptFavoriteServiceImpl implements PromptFavoriteService {
 
     //辅助发布事件
     private void publishHotEvent(Long id, Long userId, String type) {
-        //发布点赞事件
+        //发布收藏热度事件
         PromptHeatEvent event = new PromptHeatEvent(id, userId, type, LocalDateTime.now());
         eventPublisher.publishEvent(event);
         log.info("publish heat event: promptId={}, userId={}, action={}", id, userId, type);

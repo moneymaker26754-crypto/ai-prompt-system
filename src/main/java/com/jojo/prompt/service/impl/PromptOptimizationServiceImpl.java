@@ -41,7 +41,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
     private final ObjectMapper objectMapper;
-    //用于创建优化好厚的Prompt
+    //用于创建优化好后的Prompt
     private final PromptCommandService promptCommandService;
 
     @Qualifier("promptOptimizeOllamaChatOptions")

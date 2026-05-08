@@ -19,11 +19,11 @@ import java.util.Date;
 @Component
 public class JwtUtil {
 
-    // 从配置文件读取密钥
+    //从配置文件读取密钥
     @Value("${jwt.secret:your-secret-key-must-be-at-least-32-characters-long-for-hs256-algorithm}")
     private String secretKey;
 
-    // Token 有效期（7天）
+    //Token 有效期（7天）
     @Value("${jwt.expire-time:604800000}")
     private Long expireTime;
 

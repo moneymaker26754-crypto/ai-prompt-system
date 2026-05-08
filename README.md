@@ -131,7 +131,6 @@ src/main/java/com/jojo/prompt
 
 ## AI 优化工作流
 
-这是项目里最有辨识度的一部分。
 
 ### 同步优化链路
 

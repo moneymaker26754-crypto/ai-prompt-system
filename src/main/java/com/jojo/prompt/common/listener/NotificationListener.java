@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-//事件监听器：发送通知
+//事件监听器2：发送通知
 @Slf4j
 @Component
 public class NotificationListener {

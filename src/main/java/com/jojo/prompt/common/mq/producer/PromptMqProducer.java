@@ -40,6 +40,7 @@ public class PromptMqProducer {
 
     public void sendPromptCountSyncMessage(Long promptId) {
         String dispatchKey = PROMPT_COUNT_SYNC_DISPATCH_KEY + promptId;
+        //首先看看是否是第一次被消费
         Boolean firstDispatch = stringRedisTemplate
                 .opsForValue().setIfAbsent(dispatchKey, "1", countSyncDelayMs + 10_000, TimeUnit.MILLISECONDS);
         if (!Boolean.TRUE.equals(firstDispatch)) {
