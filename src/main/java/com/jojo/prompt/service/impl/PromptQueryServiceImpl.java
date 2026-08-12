@@ -336,7 +336,7 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         );
     }
 
-    //1.5关键词的索引进行全文搜索，z公共搜索
+    //1.5关键词的索引进行全文搜索，公共搜索
     private PageResult<PromptVO> searchPublicWithFullText(PromptQueryDTO query, int pageNo, int pageSize) {
         Page<Prompt> page = new Page<>(pageNo, pageSize);
         Page<Prompt> promptPage = promptMapper.searchPublicFullText(page, query.getKeyword(), PromptVisibility.PUBLIC, PromptStatus.ENABLED);
