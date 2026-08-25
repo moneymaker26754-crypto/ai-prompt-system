@@ -13,6 +13,8 @@ import com.jojo.prompt.dto.response.PromptOptimizeReviewResult;
 import com.jojo.prompt.dto.response.PromptOptimizeVO;
 import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.entity.PromptTemplate;
+import com.jojo.prompt.integration.ai.PromptAiGateway;
+import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
@@ -36,7 +38,9 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final PromptOptimizationRecordMapper recordMapper;
     private final PromptPermissionService promptPermissionService;
     private final PromptOptimizeReviewHandler promptOptimizeReviewChain;
-    private final PromptAnalyzeAgent promptAnalyzeAgent;
+    //private final PromptAnalyzeAgent promptAnalyzeAgent;
+    //更换依赖
+    private final PromptAiGateway promptAiGateway;
     private final PromptOptimizeAgent promptOptimizeAgent;
     private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
@@ -68,14 +72,15 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         record.setUserId(userId);
         record.setTemplateId(template.getId());
         record.setOriginalPrompt(dto.getOriginalPrompt());
-        record.setModelName(promptOptimizeOllamaChatOptions.getModel());
 
         try {
             //agent优化工作流
             log.info("prompt optimize start, templateId={}, userId={}", dto.getTemplateId(), userId);
 
             log.info("prompt analyze start");
-            String analysisResult = promptAnalyzeAgent.analyze(dto.getOriginalPrompt(), template);
+            //用 PromptAiGateway 去获取 Python 调用的 Ollama 或 Spring AI 的分析结果
+            PromptAnalyzeResult analyzeResult = promptAiGateway.analyze(dto.getOriginalPrompt(), template);
+            String analysisResult = analyzeResult.analysis();
             log.info("prompt analyze done");
 
             log.info("prompt optimize start");
@@ -86,6 +91,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             PromptOptimizeReviewResult review = promptReviewAgent.review(dto.getOriginalPrompt(), optimizedPrompt);
             log.info("prompt review done");
 
+            record.setModelName(analyzeResult.model());
             record.setAnalysisResult(analysisResult);
             record.setOptimizedPrompt(optimizedPrompt);
             record.setReviewResult(review == null ? null : review.getReviewComment());

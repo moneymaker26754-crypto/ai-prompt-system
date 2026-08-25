@@ -21,7 +21,7 @@ public class SearchHistoryServiceImpl implements SearchHistoryService {
 
     private final SearchHistoryMapper searchHistoryMapper;
     private final RedisCacheService redisCacheService;
-    private PromptPermissionService promptPermissionService;
+    private final PromptPermissionService promptPermissionService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)

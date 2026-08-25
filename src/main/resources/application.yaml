@@ -28,3 +28,11 @@ knife4j:
   enable: true
   setting:
     language: zh_cn
+
+app:
+  ai:
+    provider: python
+    python:
+      base-url: http://127.0.0.1:8000
+      connect-timeout: 3s
+      read-timeout: 130s

@@ -6,6 +6,9 @@ import com.jojo.prompt.common.handler.optimization.PromptOptimizeReviewHandler;
 import com.jojo.prompt.converter.PromptOptimizationConverter;
 import com.jojo.prompt.dto.response.PromptOptimizeVO;
 import com.jojo.prompt.entity.PromptOptimizationRecord;
+import com.jojo.prompt.entity.PromptTemplate;
+import com.jojo.prompt.integration.ai.PromptAiGateway;
+import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
@@ -21,6 +24,8 @@ import org.springframework.ai.ollama.api.OllamaChatOptions;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,6 +57,9 @@ class PromptOptimizationServiceImplTest {
 
     private PromptOptimizationServiceImpl promptOptimizationService;
 
+    @Mock
+    private PromptAiGateway promptAiGateway;
+
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -65,7 +73,7 @@ class PromptOptimizationServiceImplTest {
                 promptOptimizationRecordMapper,
                 promptPermissionService,
                 promptOptimizeReviewHandler,
-                promptAnalyzeAgent,
+                promptAiGateway,
                 promptOptimizeAgent,
                 promptReviewAgent,
                 promptOptimizationConverter,
@@ -90,6 +98,18 @@ class PromptOptimizationServiceImplTest {
 
         when(promptPermissionService.requireCurrentUserId()).thenReturn(10L);
         when(promptOptimizationRecordMapper.selectById(1L)).thenReturn(record);
+        when(
+                promptAiGateway.analyze(
+                        anyString(),
+                        any(PromptTemplate.class)
+                )
+        ).thenReturn(
+                new PromptAnalyzeResult(
+                        "mock analysis",
+                        "qwen3.5:9b"
+                )
+        );
+
 
         PromptOptimizeVO result = promptOptimizationService.getById(1L);
 
@@ -107,6 +127,17 @@ class PromptOptimizationServiceImplTest {
 
         when(promptPermissionService.requireCurrentUserId()).thenReturn(10L);
         when(promptOptimizationRecordMapper.selectById(1L)).thenReturn(record);
+        when(
+                promptAiGateway.analyze(
+                        anyString(),
+                        any(PromptTemplate.class)
+                )
+        ).thenReturn(
+                new PromptAnalyzeResult(
+                        "mock analysis",
+                        "qwen3.5:9b"
+                )
+        );
 
         assertThatThrownBy(() -> promptOptimizationService.getById(1L))
                 .isInstanceOf(BusinessException.class)
