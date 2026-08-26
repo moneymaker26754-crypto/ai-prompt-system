@@ -2,10 +2,9 @@ package com.jojo.prompt.integration.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jojo.prompt.common.exception.BusinessException;
+import com.jojo.prompt.dto.request.PromptOptimizeRequestDTO;
 import com.jojo.prompt.entity.PromptTemplate;
-import com.jojo.prompt.integration.ai.dto.PythonAiErrorResponse;
-import com.jojo.prompt.integration.ai.dto.PythonAnalyzeRequest;
-import com.jojo.prompt.integration.ai.dto.PythonAnalyzeResponse;
+import com.jojo.prompt.integration.ai.dto.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -64,6 +63,38 @@ public class PythonPromptAiGateway implements PromptAiGateway {
             throw mapRemoteException(ex);
 
         } catch (ResourceAccessException ex) {
+            throw new BusinessException("python ai service unavailable: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public PromptOptimizeResult optimize(PromptOptimizeRequestDTO dto, PromptTemplate template, String analysisResult) {
+
+        PythonOptimizeRequest request = new PythonOptimizeRequest(
+                dto.getOriginalPrompt(),
+                analysisResult,
+                template == null ? null : template.getOptimizeInstruction(),
+                dto.getTarget(),
+                dto.getOutputFormat(),
+                template == null ? null : template.getSystemPrompt()
+
+        );
+
+        try {
+            PythonOptimizeResponse response = restClient.post()
+                    .uri("/v1/prompts/optimize")
+                    .body(request)
+                    .retrieve()
+                    .body(PythonOptimizeResponse.class);
+
+            if(response == null || !StringUtils.hasText(response.optimizedPrompt())){
+                throw new BusinessException("python ai optimize result is empty");
+            }
+
+            return new PromptOptimizeResult(response.optimizedPrompt(), response.model());
+        } catch(RestClientResponseException ex) {
+            throw mapRemoteException(ex);
+        } catch(ResourceAccessException ex) {
             throw new BusinessException("python ai service unavailable: " + ex.getMessage());
         }
     }

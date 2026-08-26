@@ -15,6 +15,7 @@ import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.entity.PromptTemplate;
 import com.jojo.prompt.integration.ai.PromptAiGateway;
 import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
+import com.jojo.prompt.integration.ai.PromptOptimizeResult;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
@@ -41,7 +42,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     //private final PromptAnalyzeAgent promptAnalyzeAgent;
     //更换依赖
     private final PromptAiGateway promptAiGateway;
-    private final PromptOptimizeAgent promptOptimizeAgent;
+    //private final PromptOptimizeAgent promptOptimizeAgent;
     private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
     private final ObjectMapper objectMapper;
@@ -84,7 +85,9 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             log.info("prompt analyze done");
 
             log.info("prompt optimize start");
-            String optimizedPrompt = promptOptimizeAgent.optimize(dto, template, analysisResult);
+            // 用 PromptAiGateway 去获取 Python 调用的 Ollama 或 Spring AI 的优化结果,之后再获取优化后的 Prompt
+            PromptOptimizeResult optimizeResult = promptAiGateway.optimize(dto, template, analysisResult);
+            String optimizedPrompt = optimizeResult.optimizePrompt();
             log.info("prompt optimize done");
 
             log.info("prompt review start");
