@@ -6,6 +6,7 @@ from app.core.config import get_settings
 from app.core.error_handlers import register_exception_handlers
 from app.core.lifespan import lifespan
 from app.api.optimize import router as optimize_router
+from app.api.review import router as review_router
 
 settings = get_settings()
 
@@ -23,3 +24,4 @@ register_exception_handlers(app)
 app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(analyze_router, prefix=settings.api_prefix)
 app.include_router(optimize_router, prefix=settings.api_prefix)
+app.include_router(review_router, prefix=settings.api_prefix)

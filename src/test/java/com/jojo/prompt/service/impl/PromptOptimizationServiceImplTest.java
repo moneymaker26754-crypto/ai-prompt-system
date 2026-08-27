@@ -9,6 +9,7 @@ import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.entity.PromptTemplate;
 import com.jojo.prompt.integration.ai.PromptAiGateway;
 import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
+import com.jojo.prompt.integration.ai.PromptReviewResult;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
@@ -53,12 +54,13 @@ class PromptOptimizationServiceImplTest {
     private PromptReviewAgent promptReviewAgent;
 
     @Mock
+    private PromptAiGateway promptAiGateway;
+
+    @Mock
     private PromptCommandService promptCommandService;
 
     private PromptOptimizationServiceImpl promptOptimizationService;
 
-    @Mock
-    private PromptAiGateway promptAiGateway;
 
     @BeforeEach
     void setUp() {
@@ -74,8 +76,6 @@ class PromptOptimizationServiceImplTest {
                 promptPermissionService,
                 promptOptimizeReviewHandler,
                 promptAiGateway,
-                promptOptimizeAgent,
-                promptReviewAgent,
                 promptOptimizationConverter,
                 objectMapper,
                 promptCommandService,
@@ -109,6 +109,20 @@ class PromptOptimizationServiceImplTest {
                         "qwen3.5:9b"
                 )
         );
+        when(
+                promptAiGateway.review(
+                        anyString(),
+                        anyString()
+                )
+        ).thenReturn(
+                new PromptReviewResult(
+                        90,
+                        "LOW",
+                        false,
+                        "保持原意",
+                        "qwen3.5:9b"
+                )
+        );
 
 
         PromptOptimizeVO result = promptOptimizationService.getById(1L);
@@ -135,6 +149,20 @@ class PromptOptimizationServiceImplTest {
         ).thenReturn(
                 new PromptAnalyzeResult(
                         "mock analysis",
+                        "qwen3.5:9b"
+                )
+        );
+        when(
+                promptAiGateway.review(
+                        anyString(),
+                        anyString()
+                )
+        ).thenReturn(
+                new PromptReviewResult(
+                        90,
+                        "LOW",
+                        false,
+                        "保持原意",
                         "qwen3.5:9b"
                 )
         );

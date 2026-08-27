@@ -122,4 +122,47 @@ class PythonPromptAiGatewayTest {
 
         server.verify();
     }
+
+    @Test
+    void reviewShouldCallPythonService() {
+
+        server.expect(
+                        requestTo(
+                                "http://ai-service/v1/prompts/review"
+                        )
+                )
+                .andExpect(method(HttpMethod.POST))
+                .andExpect(content().json("""
+            {
+              "original_prompt": "hello",
+              "optimized_prompt": "better hello"
+            }
+            """))
+                .andRespond(
+                        withSuccess(
+                                """
+                                {
+                                  "score": 90,
+                                  "risk_level": "LOW",
+                                  "changed_intent": false,
+                                  "review_comment": "保持原意",
+                                  "model": "qwen3.5:9b"
+                                }
+                                """,
+                                MediaType.APPLICATION_JSON
+                        )
+                );
+
+        PromptReviewResult result =
+                gateway.review(
+                        "hello",
+                        "better hello"
+                );
+
+        assertEquals(90, result.score());
+        assertEquals("LOW", result.riskLevel());
+        assertFalse(result.changedIntent());
+
+        server.verify();
+    }
 }

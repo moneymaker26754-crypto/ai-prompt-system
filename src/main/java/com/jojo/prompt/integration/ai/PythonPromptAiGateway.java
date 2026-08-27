@@ -99,6 +99,37 @@ public class PythonPromptAiGateway implements PromptAiGateway {
         }
     }
 
+    @Override
+    public PromptReviewResult review(String originalPrompt, String optimizedPrompt) {
+
+        PythonReviewRequest request = new PythonReviewRequest(originalPrompt, optimizedPrompt);
+
+        try {
+            PythonReviewResponse response = restClient.post()
+                    .uri("/v1/prompts/review")
+                    .body(request)
+                    .retrieve()
+                    .body(PythonReviewResponse.class);
+
+            if(response == null) {
+                throw new BusinessException("python ai review result is empty");
+            }
+            validateReviewResponse(response);
+
+            return new PromptReviewResult(
+                    response.score(),
+                    response.riskLevel(),
+                    response.changedIntent(),
+                    response.reviewComment(),
+                    response.model()
+            );
+        } catch (RestClientResponseException ex) {
+            throw mapRemoteException(ex);
+        } catch (ResourceAccessException ex) {
+            throw new BusinessException("python ai service unavailable: " + ex.getMessage());
+        }
+    }
+
     private BusinessException mapRemoteException(RestClientResponseException ex) {
 
         try {
@@ -117,6 +148,31 @@ public class PythonPromptAiGateway implements PromptAiGateway {
             return new BusinessException(
                     "python ai service returned HTTP "
                             + ex.getStatusCode().value()
+            );
+        }
+    }
+
+    private void validateReviewResponse(
+            PythonReviewResponse response
+    ) {
+
+        if (
+                response.score() == null
+                        || response.score() < 0
+                        || response.score() > 100
+        ) {
+            throw new BusinessException(
+                    "invalid python review score"
+            );
+        }
+
+        if (
+                !"LOW".equals(response.riskLevel())
+                        && !"MEDIUM".equals(response.riskLevel())
+                        && !"HIGH".equals(response.riskLevel())
+        ) {
+            throw new BusinessException(
+                    "invalid python review risk level"
             );
         }
     }

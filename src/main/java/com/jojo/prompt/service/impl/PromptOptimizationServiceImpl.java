@@ -16,6 +16,7 @@ import com.jojo.prompt.entity.PromptTemplate;
 import com.jojo.prompt.integration.ai.PromptAiGateway;
 import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
 import com.jojo.prompt.integration.ai.PromptOptimizeResult;
+import com.jojo.prompt.integration.ai.PromptReviewResult;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
@@ -43,7 +44,7 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     //更换依赖
     private final PromptAiGateway promptAiGateway;
     //private final PromptOptimizeAgent promptOptimizeAgent;
-    private final PromptReviewAgent promptReviewAgent;
+    //private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
     private final ObjectMapper objectMapper;
     //用于创建优化好后的Prompt
@@ -90,16 +91,17 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
             String optimizedPrompt = optimizeResult.optimizePrompt();
             log.info("prompt optimize done");
 
+            // 用 PromptAiGateway 去获取 Python 调用的 Ollama 或 Spring AI 的审核结果
             log.info("prompt review start");
-            PromptOptimizeReviewResult review = promptReviewAgent.review(dto.getOriginalPrompt(), optimizedPrompt);
+            PromptReviewResult reviewResult = promptAiGateway.review(dto.getOriginalPrompt(), optimizedPrompt);
             log.info("prompt review done");
 
             record.setModelName(analyzeResult.model());
             record.setAnalysisResult(analysisResult);
             record.setOptimizedPrompt(optimizedPrompt);
-            record.setReviewResult(review == null ? null : review.getReviewComment());
-            record.setScore(extractScore(review));
-            record.setRiskLevel(extractRiskLevel(review));
+            record.setReviewResult(reviewResult.reviewComment());
+            record.setScore(reviewResult.score());
+            record.setRiskLevel(reviewResult.riskLevel());
             record.setReviewReport(writeReviewReport(context));
             record.setStatus("SUCCESS");
             recordMapper.insert(record);
@@ -157,28 +159,28 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
         return promptCommandService.createPrompt(createDTO);
     }
 
-
-    private Integer extractScore(PromptOptimizeReviewResult reviewResult) {
-        if (reviewResult == null || reviewResult.getScore() == null) {
-            return 0;
-        }
-        return Math.max(0, Math.min(100, reviewResult.getScore()));
-    }
-
-    private String extractRiskLevel(PromptOptimizeReviewResult reviewResult) {
-        if (reviewResult == null || !StringUtils.hasText(reviewResult.getRiskLevel())) {
-            return "LOW";
-        }
-
-        String riskLevel = reviewResult.getRiskLevel().toUpperCase();
-        if (riskLevel.contains("HIGH")) {
-            return "HIGH";
-        }
-        if (riskLevel.contains("MEDIUM")) {
-            return "MEDIUM";
-        }
-        return "LOW";
-    }
+    //交给 Python 服务去判断，这些方法不再需要
+//    private Integer extractScore(PromptOptimizeReviewResult reviewResult) {
+//        if (reviewResult == null || reviewResult.getScore() == null) {
+//            return 0;
+//        }
+//        return Math.max(0, Math.min(100, reviewResult.getScore()));
+//    }
+//
+//    private String extractRiskLevel(PromptOptimizeReviewResult reviewResult) {
+//        if (reviewResult == null || !StringUtils.hasText(reviewResult.getRiskLevel())) {
+//            return "LOW";
+//        }
+//
+//        String riskLevel = reviewResult.getRiskLevel().toUpperCase();
+//        if (riskLevel.contains("HIGH")) {
+//            return "HIGH";
+//        }
+//        if (riskLevel.contains("MEDIUM")) {
+//            return "MEDIUM";
+//        }
+//        return "LOW";
+//    }
 
     private String writeReviewReport(PromptOptimizeReviewContext context) throws JsonProcessingException {
         return objectMapper.writeValueAsString(context.getSteps());

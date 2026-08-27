@@ -15,4 +15,9 @@ public interface PromptAiGateway {
             PromptTemplate template,
             String analysisResult
     );
+
+    PromptReviewResult review(
+            String originalPrompt,
+            String optimizedPrompt
+    );
 }
