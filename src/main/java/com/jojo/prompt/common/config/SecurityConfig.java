@@ -52,7 +52,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/webjars/**",
                                 "/favicon.ico",
-                                "/druid/**"
+                                "/druid/**",
+                                "/actuator/health",
+                                "/actuator/health/**"
 
                         ).permitAll().anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

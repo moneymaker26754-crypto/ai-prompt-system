@@ -1,0 +1,168 @@
+services:
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u$${MYSQL_USER} -p$${MYSQL_PASSWORD} --silent"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "rabbitmq-diagnostics",
+          "-q",
+          "ping"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  ai-service:
+    build:
+      context: ./ai-service
+
+    restart: unless-stopped
+
+    environment:
+      AI_ENVIRONMENT: docker
+
+      AI_OLLAMA_BASE_URL:
+        http://host.docker.internal:11434
+
+      AI_OLLAMA_MODEL:
+        qwen3.5:9b
+
+      AI_OLLAMA_CONNECT_TIMEOUT: 5
+      AI_OLLAMA_READ_TIMEOUT: 120
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    ports:
+      - "8000:8000"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/health/ready', timeout=3)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+
+  java-app:
+    build:
+      context: .
+
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    environment:
+
+      SPRING_DATASOURCE_URL:
+        jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+
+      SPRING_DATASOURCE_USERNAME:
+        ${MYSQL_USER}
+
+      SPRING_DATASOURCE_PASSWORD:
+        ${MYSQL_PASSWORD}
+
+      SPRING_DATA_REDIS_HOST:
+        redis
+
+      SPRING_DATA_REDIS_PORT:
+        6379
+
+      SPRING_RABBITMQ_HOST:
+        rabbitmq
+
+      SPRING_RABBITMQ_PORT:
+        5672
+
+      SPRING_RABBITMQ_USERNAME:
+        ${RABBITMQ_USER}
+
+      SPRING_RABBITMQ_PASSWORD:
+        ${RABBITMQ_PASSWORD}
+
+      APP_AI_PYTHON_BASE_URL:
+        http://ai-service:8000
+
+    depends_on:
+
+      mysql:
+        condition: service_healthy
+
+      redis:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+      ai-service:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "-f",
+          "http://localhost:8080/actuator/health"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+
+volumes:
+  mysql-data:
+  redis-data:
+  rabbitmq-data:

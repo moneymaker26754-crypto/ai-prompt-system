@@ -36,3 +36,12 @@ app:
       base-url: http://127.0.0.1:8000
       connect-timeout: 3s
       read-timeout: 130s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health"
+  endpoint:
+    health:
+      show-details: never

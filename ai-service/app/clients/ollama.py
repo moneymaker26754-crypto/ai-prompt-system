@@ -128,3 +128,24 @@ class OllamaClient:
                 f"Ollama return Http " 
                 f"{exc.response.status_code}"
             ) from exc
+
+
+    async def check_ready(self) -> None:
+        try:
+            response = await self._http_client.get("/api/tags")
+            response.raise_for_status()
+
+        except httpx.TimeoutException as exc:
+            raise ModelTimeoutError(
+                "Ollama readiness check timed out"
+            ) from exc
+
+        except httpx.ConnectError as exc:
+            raise ModelUnavailableError(
+                "Ollama is unavailable"
+            ) from exc
+
+        except httpx.HTTPStatusError as exc:
+            raise ModelUnavailableError(
+                "Unable to connect to Ollama"
+            ) from exc
