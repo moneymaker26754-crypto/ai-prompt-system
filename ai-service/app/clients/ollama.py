@@ -9,6 +9,8 @@ from app.core.exceptions import (
     ModelUpstreamError,
 )
 from app.schemas.ollama import OllamaGenerateResponse
+from collections.abc import AsyncIterator
+import json
 
 
 class OllamaClient:
@@ -25,6 +27,7 @@ class OllamaClient:
             prompt: str,
             system_prompt: str | None = None,
     ) -> OllamaGenerateResponse:
+
         payload = {
             "model": self._settings.ollama_model,
             "prompt": prompt,
@@ -65,4 +68,63 @@ class OllamaClient:
         except (ValueError, ValidationError) as exc:
             raise InvalidModelOutputError(
                 "Invalid response returned by Ollama"
+            ) from exc
+
+    async def generate_stream(
+            self,
+            prompt: str,
+            system_prompt: str | None = None,
+    ) -> AsyncIterator[OllamaGenerateResponse]:
+
+        payload = {
+            "model": self._settings.ollama_model,
+            "prompt": prompt,
+            "stream": True,
+            "think": False,
+        }
+
+        if system_prompt:
+            payload["system"] = system_prompt
+
+        try:
+            async with self._http_client.stream(
+                "POST",
+                "/api/generate",
+                json=payload,
+            ) as response:
+
+                response.raise_for_status()
+
+                async for line in response.aiter_lines():
+                    if not line.strip():
+                        continue
+
+                    try:
+                        data = json.loads(line)
+
+                        chunk = (
+                            OllamaGenerateResponse.model_validate(data)
+                        )
+
+                    except(json.JSONDecodeError, ValidationError) as exc:
+                        raise InvalidModelOutputError(
+                            "Invalid Ollama stream chunk"
+                        ) from exc
+
+                    yield chunk
+
+        except httpx.TimeoutException as exc:
+            raise ModelTimeoutError(
+                "Ollama stream timed out"
+            ) from exc
+
+        except httpx.ConnectError as exc:
+            raise ModelUnavailableError(
+                "Unable to connect to Ollama"
+            ) from exc
+
+        except httpx.HTTPStatusError as exc:
+            raise ModelUpstreamError(
+                f"Ollama return Http " 
+                f"{exc.response.status_code}"
             ) from exc

@@ -6,6 +6,7 @@ from app.clients.ollama import OllamaClient
 from app.core.config import  get_settings
 from app.services.analyze import PromptAnalyzeService
 from app.services.optimize import PromptOptimizeService
+from app.services.optimize_stream import PromptOptimizeStreamService
 from app.services.review import PromptReviewService
 
 # lifespan代替Depend，实现多次调用都用一个实例
@@ -51,5 +52,13 @@ def get_prompt_review_service(
     ollama_client: OllamaClient = Depends(get_ollama_client),
 ) -> PromptReviewService:
     return PromptReviewService(
+        ollama_client=ollama_client
+    )
+
+
+def get_prompt_optimize_stream_service(
+    ollama_client: OllamaClient = Depends(get_ollama_client),
+) -> PromptOptimizeStreamService:
+    return PromptOptimizeStreamService(
         ollama_client=ollama_client
     )

@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.net.http.HttpClient;
 
@@ -29,6 +30,16 @@ public class AiServiceConfig {
         return RestClient.builder()
                 .baseUrl(properties.getBaseUrl()) // // http://127.0.0.1:8000
                 .requestFactory(requestFactory)
+                .build();
+    }
+
+    @Bean("pythonAiWebClient")
+    public WebClient pythonAiWebClient(
+            AiServiceProperties properties
+    ) {
+
+        return WebClient.builder()
+                .baseUrl(properties.getBaseUrl())
                 .build();
     }
 }
