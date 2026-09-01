@@ -14,9 +14,6 @@ import com.jojo.prompt.integration.ai.*;
 import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptOptimizationStreamService;
-import com.jojo.prompt.service.agent.PromptAnalyzeAgent;
-import com.jojo.prompt.service.agent.PromptOptimizeStreamAgent;
-import com.jojo.prompt.service.agent.PromptReviewAgent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.codec.ServerSentEvent;
@@ -36,9 +33,6 @@ public class PromptOptimizationStreamServiceImpl implements PromptOptimizationSt
     private final PromptOptimizationRecordMapper recordMapper;
     private final PromptPermissionService promptPermissionService;
     private final PromptOptimizeReviewHandler promptOptimizeReviewChain;
-    //    private final PromptAnalyzeAgent analyzeAgent;
-//    private final PromptOptimizeStreamAgent optimizeStreamAgent;
-//    private final PromptReviewAgent reviewAgent;
     // 对于 AI 的调用都去用 Python 服务去实现
     private final PromptAiGateway promptAiGateway;
     private final PromptAiStreamGateway promptAiStreamGateway;

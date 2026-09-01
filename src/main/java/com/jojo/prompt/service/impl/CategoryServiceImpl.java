@@ -42,7 +42,7 @@ public class CategoryServiceImpl implements CategoryService {
         //创建分类
         Category category = BeanUtil.copyProperties(dto, Category.class);
         categoryMapper.insert(category);
-        log.info("create category success: id={}", category.getId());
+        log.info("category created, categoryId={}, status=success", category.getId());
         //删除缓存
         redisCacheService.deleteCategoryCache();
         return category.getId();
@@ -69,7 +69,7 @@ public class CategoryServiceImpl implements CategoryService {
         if(rows == 0) {
             throw new BusinessException("category has been modified by another user");
         }
-        log.info("update category success: id={}, name={}", category.getId(),  category.getName());
+        log.info("category updated, categoryId={}, categoryName={}, status=success", category.getId(), category.getName());
         //删除缓存
         redisCacheService.deleteCategoryCache();
     }
@@ -86,7 +86,7 @@ public class CategoryServiceImpl implements CategoryService {
             throw new BusinessException("this category still have " + promptCount + " prompts");
         }
         categoryMapper.deleteById(id);
-        log.info("delete category success: id={}", id);
+        log.info("category deleted, categoryId={}, status=success", id);
         //删除缓存
         redisCacheService.deleteCategoryCache();
     }

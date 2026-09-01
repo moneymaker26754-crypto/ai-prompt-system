@@ -15,5 +15,9 @@ public class AiServiceProperties {
 
     private Duration connectTimeout = Duration.ofSeconds(3);
 
-    private Duration readTimeout = Duration.ofSeconds(130);
+    private Duration readTimeout = Duration.ofSeconds(135);
+
+    private String internalApiKey;
+
+    private Duration ragEvaluationReadTimeout = Duration.ofMinutes(10);
 }

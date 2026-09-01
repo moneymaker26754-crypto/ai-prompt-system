@@ -23,8 +23,6 @@ public class OriginalityReviewHandler extends AbstractReviewHandler {
 
     @Override
     protected void doReview(Prompt prompt) {
-        log.info("[{}] start checking: promptId={}", getHandlerName(), prompt.getId());
-
         //查询已存在的提示词
         List<Prompt> existingPrompts = promptMapper.selectList(
                 new LambdaQueryWrapper<Prompt>()
@@ -36,13 +34,13 @@ public class OriginalityReviewHandler extends AbstractReviewHandler {
             double similarity = calculateSimilarity(prompt.getContent(), existing.getContent());
 
             if(similarity > SIMILARITY_THRESHOLD) {
-                log.info("[{}] check fail: promptId={}", getHandlerName(), prompt.getId());
+                log.warn("originality review failed, promptId={}, status=too_similar, similarity={}", prompt.getId(), String.format("%.2f%%", similarity * 100));
                 throw new BusinessException(
                         String.format("prompt is too similar to existing prompt, similarity=%.2f%%", similarity * 100)
                 );
             }
         }
-        log.info("[{}] check success: promptId={}", getHandlerName(), prompt.getId());
+        log.info("originality review completed, promptId={}, status=success", prompt.getId());
     }
 
     private double calculateSimilarity(String text1, String text2) {

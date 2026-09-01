@@ -101,4 +101,29 @@ async def test_generate_converts_upstream_http_error():
     )
 
 
+@pytest.mark.anyio
+async def test_embed_posts_all_texts_and_returns_embeddings():
+    def handler(request: httpx.Request) -> httpx.Response:
+        payload = json.loads(request.content)
+
+        assert request.url.path == "/api/embed"
+        assert payload == {
+            "model": "qwen3-embedding:0.6b",
+            "input": ["first", "second"],
+            "dimensions": 1024,
+        }
+        return httpx.Response(200, json={"embeddings": [[0.1], [0.2]]})
+
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler),
+        base_url="http://test",
+    ) as http_client:
+        client = OllamaClient(http_client=http_client, settings=Settings())
+        embeddings = await client.embed(
+            ["first", "second"], model="qwen3-embedding:0.6b"
+        )
+
+    assert embeddings == [[0.1], [0.2]]
+
+
 

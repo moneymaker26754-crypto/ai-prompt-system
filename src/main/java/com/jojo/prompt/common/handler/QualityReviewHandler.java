@@ -18,32 +18,31 @@ public class QualityReviewHandler extends AbstractReviewHandler {
 
     @Override
     protected void doReview(Prompt prompt) {
-        log.info("[{}] start checking: promptId={}", getHandlerName(), prompt.getId());
-
         String title = prompt.getTitle();
         String content = prompt.getContent();
 
         if(!StringUtils.hasText(title) ||  !StringUtils.hasText(content)) {
+            log.warn("quality review failed, promptId={}, status=empty_content", prompt.getId());
             throw new BusinessException("title or content is null");
         }
 
         //检测标题长度
         if(title.length() < MIN_TITLE_LENGTH || title.length() > MAX_TITLE_LENGTH) {
-            log.warn("[{}] prompt title length invalid, promptId={}", getHandlerName(), prompt.getId());
+            log.warn("quality review failed, promptId={}, status=invalid_title_length, titleLength={}", prompt.getId(), title.length());
             throw new BusinessException("title length should be between " + MIN_TITLE_LENGTH + " and " + MAX_TITLE_LENGTH);
         }
         //检测内容长度
         if(content.length() < MIN_CONTENT_LENGTH || content.length() > MAX_CONTENT_LENGTH) {
-            log.warn("[{}] prompt content length invalid, promptId={}", getHandlerName(), prompt.getId());
+            log.warn("quality review failed, promptId={}, status=invalid_content_length, contentLength={}", prompt.getId(), content.length());
             throw new BusinessException("content length should be between " + MIN_CONTENT_LENGTH + " and " + MAX_CONTENT_LENGTH);
         }
         //检测内容结构
         if(!containsBasicElement(content)) {
-            log.warn("[{}] check failed: promptId={}", getHandlerName(), prompt.getId());
+            log.warn("quality review failed, promptId={}, status=missing_basic_elements", prompt.getId());
             throw new BusinessException("prompt content should contain basic elements like question, answer, instruction, etc.");
         }
 
-        log.info("[{}] check success: promptId={}", getHandlerName(), prompt.getId());
+        log.info("quality review completed, promptId={}, status=success", prompt.getId());
     }
 
     private boolean containsBasicElement(String content) {

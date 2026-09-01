@@ -80,7 +80,24 @@ logging:
   level:
     com.jojo.prompt: debug
     com.jojo.prompt.mapper: debug
+  pattern:
+    correlation: "[traceId=%X{traceId:-},spanId=%X{spanId:-},requestId=%X{requestId:-}] "
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0  # 100% sampling for development
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces
 
 jwt:
   secret: ${JWT_SECRET:your-secret-key-must-be-at-least-32-characters-long-for-hs256-algorithm}
   expire-time: 604800000
+
+app:
+  ai:
+    python:
+      base-url: ${AI_SERVICE_BASE_URL:http://127.0.0.1:8000}
+      internal-api-key: ${AI_INTERNAL_API_KEY:}
+      rag-evaluation-read-timeout: ${AI_RAG_EVALUATION_TIMEOUT:10m}

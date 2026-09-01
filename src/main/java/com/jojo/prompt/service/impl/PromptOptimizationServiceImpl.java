@@ -21,12 +21,8 @@ import com.jojo.prompt.mapper.PromptOptimizationRecordMapper;
 import com.jojo.prompt.mapper.PromptTemplateMapper;
 import com.jojo.prompt.service.PromptCommandService;
 import com.jojo.prompt.service.PromptOptimizationService;
-import com.jojo.prompt.service.agent.PromptAnalyzeAgent;
-import com.jojo.prompt.service.agent.PromptOptimizeAgent;
-import com.jojo.prompt.service.agent.PromptReviewAgent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -40,18 +36,12 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     private final PromptOptimizationRecordMapper recordMapper;
     private final PromptPermissionService promptPermissionService;
     private final PromptOptimizeReviewHandler promptOptimizeReviewChain;
-    //private final PromptAnalyzeAgent promptAnalyzeAgent;
-    //更换依赖
     private final PromptAiGateway promptAiGateway;
-    //private final PromptOptimizeAgent promptOptimizeAgent;
-    //private final PromptReviewAgent promptReviewAgent;
     private final PromptOptimizationConverter promptOptimizationConverter;
     private final ObjectMapper objectMapper;
     //用于创建优化好后的Prompt
     private final PromptCommandService promptCommandService;
 
-    @Qualifier("promptOptimizeOllamaChatOptions")
-    private final OllamaChatOptions promptOptimizeOllamaChatOptions;
 
     @Override
     public PromptOptimizeVO optimize(PromptOptimizeRequestDTO dto) {

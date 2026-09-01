@@ -1,0 +1,76 @@
+{
+  "annotations": {"list": []},
+  "editable": false,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{"expr": "sum by (operation) (rate(ai_request_total[1m]))", "legendFormat": "{{operation}}", "refId": "A"}],
+      "title": "AI QPS",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "id": 2,
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le, operation) (rate(ai_request_duration_seconds_bucket[5m])))", "legendFormat": "{{operation}} P50", "refId": "A"},
+        {"expr": "histogram_quantile(0.95, sum by (le, operation) (rate(ai_request_duration_seconds_bucket[5m])))", "legendFormat": "{{operation}} P95", "refId": "B"}
+      ],
+      "title": "Analyze / Optimize / Review P50 & P95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "id": 3,
+      "targets": [{"expr": "sum by (operation, status) (rate(ai_request_total{status!=\"success\"}[5m])) / on(operation) group_left sum by (operation) (rate(ai_request_total[5m]))", "legendFormat": "{{operation}} / {{status}}", "refId": "A"}],
+      "title": "AI Error Rate by Status",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "short"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "id": 4,
+      "targets": [
+        {"expr": "sum by (operation) (increase(ai_input_tokens_total[1m]))", "legendFormat": "{{operation}} input", "refId": "A"},
+        {"expr": "sum by (operation) (increase(ai_output_tokens_total[1m]))", "legendFormat": "{{operation}} output", "refId": "B"}
+      ],
+      "title": "Input / Output Tokens per Minute",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "id": 5,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, uri) (rate(http_server_requests_seconds_bucket{job=\"java-service\"}[5m])))", "legendFormat": "{{uri}} P95", "refId": "A"}],
+      "title": "Java HTTP Latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}, "overrides": []},
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+      "id": 6,
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (le, operation) (rate(ai_request_duration_seconds_bucket[5m])))", "legendFormat": "{{operation}} P95", "refId": "A"}],
+      "title": "Python AI Latency",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["ai", "observability"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timezone": "browser",
+  "title": "AI Prompt System Observability",
+  "uid": "ai-prompt-observability",
+  "version": 1
+}

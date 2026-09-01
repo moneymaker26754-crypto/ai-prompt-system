@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: AI Observability
+    orgId: 1
+    folder: AI Prompt System
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 10
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/favicon.ico",
                                 "/druid/**",
                                 "/actuator/health",
-                                "/actuator/health/**"
+                                "/actuator/health/**",
+                                "/actuator/prometheus"
 
                         ).permitAll().anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

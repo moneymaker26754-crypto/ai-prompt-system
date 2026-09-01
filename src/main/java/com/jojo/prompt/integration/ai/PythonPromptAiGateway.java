@@ -2,11 +2,13 @@ package com.jojo.prompt.integration.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jojo.prompt.common.exception.BusinessException;
+import com.jojo.prompt.common.filter.RequestIdFilter;
 import com.jojo.prompt.dto.request.PromptOptimizeRequestDTO;
 import com.jojo.prompt.entity.PromptTemplate;
 import com.jojo.prompt.integration.ai.dto.*;
+import org.slf4j.MDC;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.ResourceAccessException;
@@ -14,12 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 @Component
-// 使用 @ConditionalOnProperty 只在配置 app.ai.provider=python 时激活
-@ConditionalOnProperty(
-        prefix = "app.ai",
-        name = "provider",
-        havingValue = "python"
-)
+@Slf4j
 public class PythonPromptAiGateway implements PromptAiGateway {
 
     // 通过 RestClient 发送HTTP请求到Python服务
@@ -43,16 +40,18 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                         template == null ? null : template.getSystemPrompt()
                 );
 
+        String requestId = MDC.get(RequestIdFilter.MDC_KEY);
         try {
             PythonAnalyzeResponse response =
                     restClient.post()
-                            .uri("/v1/prompts/analyze")
+                             .uri("/v1/prompts/analyze")
+                            .headers(headers -> addRequestId(headers, requestId))
                             .body(request)
                             .retrieve()
                             .body(PythonAnalyzeResponse.class);
 
             if(response == null || !StringUtils.hasText(response.analysis())) {
-                throw new BusinessException("python ai analyze result is empty");
+                throw AiErrorMapping.fromCode("INVALID_MODEL_OUTPUT");
             }
 
             return new PromptAnalyzeResult(
@@ -60,10 +59,10 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                     response.model()
             );
         } catch (RestClientResponseException ex) {
-            throw mapRemoteException(ex);
+            throw mapRemoteException(ex, "analyze");
 
         } catch (ResourceAccessException ex) {
-            throw new BusinessException("python ai service unavailable: " + ex.getMessage());
+            throw mapTransportException(ex, "analyze");
         }
     }
 
@@ -80,22 +79,24 @@ public class PythonPromptAiGateway implements PromptAiGateway {
 
         );
 
+        String requestId = MDC.get(RequestIdFilter.MDC_KEY);
         try {
             PythonOptimizeResponse response = restClient.post()
                     .uri("/v1/prompts/optimize")
+                    .headers(headers -> addRequestId(headers, requestId))
                     .body(request)
                     .retrieve()
                     .body(PythonOptimizeResponse.class);
 
             if(response == null || !StringUtils.hasText(response.optimizedPrompt())){
-                throw new BusinessException("python ai optimize result is empty");
+                throw AiErrorMapping.fromCode("INVALID_MODEL_OUTPUT");
             }
 
             return new PromptOptimizeResult(response.optimizedPrompt(), response.model());
         } catch(RestClientResponseException ex) {
-            throw mapRemoteException(ex);
+            throw mapRemoteException(ex, "optimize");
         } catch(ResourceAccessException ex) {
-            throw new BusinessException("python ai service unavailable: " + ex.getMessage());
+            throw mapTransportException(ex, "optimize");
         }
     }
 
@@ -104,15 +105,17 @@ public class PythonPromptAiGateway implements PromptAiGateway {
 
         PythonReviewRequest request = new PythonReviewRequest(originalPrompt, optimizedPrompt);
 
+        String requestId = MDC.get(RequestIdFilter.MDC_KEY);
         try {
             PythonReviewResponse response = restClient.post()
                     .uri("/v1/prompts/review")
+                    .headers(headers -> addRequestId(headers, requestId))
                     .body(request)
                     .retrieve()
                     .body(PythonReviewResponse.class);
 
             if(response == null) {
-                throw new BusinessException("python ai review result is empty");
+                throw AiErrorMapping.fromCode("INVALID_MODEL_OUTPUT");
             }
             validateReviewResponse(response);
 
@@ -124,13 +127,16 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                     response.model()
             );
         } catch (RestClientResponseException ex) {
-            throw mapRemoteException(ex);
+            throw mapRemoteException(ex, "review");
         } catch (ResourceAccessException ex) {
-            throw new BusinessException("python ai service unavailable: " + ex.getMessage());
+            throw mapTransportException(ex, "review");
         }
     }
 
-    private BusinessException mapRemoteException(RestClientResponseException ex) {
+    private BusinessException mapRemoteException(
+            RestClientResponseException ex,
+            String operation
+    ) {
 
         try {
             PythonAiErrorResponse error = objectMapper.readValue(
@@ -138,17 +144,43 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                     PythonAiErrorResponse.class
             );
 
-            return new BusinessException(
-                    "python ai service error ["
-                            + error.code()
-                            + "]: "
-                            + error.message()
+            BusinessException mapped = AiErrorMapping.fromCode(error.code());
+            log.warn(
+                    "python ai request failed, operation={}, errorCode={}, httpStatus={}, status=failed",
+                    operation,
+                    mapped.getMessage(),
+                    ex.getStatusCode().value()
             );
+            return mapped;
         } catch(Exception ignored) {
-            return new BusinessException(
-                    "python ai service returned HTTP "
-                            + ex.getStatusCode().value()
+            log.warn(
+                    "python ai response could not be mapped, operation={}, httpStatus={}, status=failed",
+                    operation,
+                    ex.getStatusCode().value()
             );
+            return AiErrorMapping.fromCode("AI_UPSTREAM_ERROR");
+        }
+    }
+
+    private BusinessException mapTransportException(
+            ResourceAccessException ex,
+            String operation
+    ) {
+        BusinessException mapped = AiErrorMapping.fromTransport(ex);
+        log.warn(
+                "python ai transport failed, operation={}, errorCode={}, status=failed",
+                operation,
+                mapped.getMessage()
+        );
+        return mapped;
+    }
+
+    private void addRequestId(
+            org.springframework.http.HttpHeaders headers,
+            String requestId
+    ) {
+        if (StringUtils.hasText(requestId)) {
+            headers.set(RequestIdFilter.HEADER, requestId);
         }
     }
 
@@ -161,9 +193,7 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                         || response.score() < 0
                         || response.score() > 100
         ) {
-            throw new BusinessException(
-                    "invalid python review score"
-            );
+            throw AiErrorMapping.fromCode("INVALID_MODEL_OUTPUT");
         }
 
         if (
@@ -171,9 +201,7 @@ public class PythonPromptAiGateway implements PromptAiGateway {
                         && !"MEDIUM".equals(response.riskLevel())
                         && !"HIGH".equals(response.riskLevel())
         ) {
-            throw new BusinessException(
-                    "invalid python review risk level"
-            );
+            throw AiErrorMapping.fromCode("INVALID_MODEL_OUTPUT");
         }
     }
 }

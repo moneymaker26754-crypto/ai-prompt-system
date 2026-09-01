@@ -149,3 +149,35 @@ class OllamaClient:
             raise ModelUnavailableError(
                 "Unable to connect to Ollama"
             ) from exc
+
+    async def embed(self, texts: list[str], model: str) -> list[list[float]]:
+        try:
+            response = await self._http_client.post(
+                "/api/embed",
+                json={
+                    "model": model,
+                    "input": texts,
+                    "dimensions": 1024,
+                },
+            )
+            response.raise_for_status()
+        except httpx.TimeoutException as exc:
+            raise ModelTimeoutError("Ollama embedding request timed out") from exc
+        except httpx.ConnectError as exc:
+            raise ModelUnavailableError("Unable to connect to Ollama") from exc
+        except httpx.HTTPStatusError as exc:
+            raise ModelUpstreamError(
+                f"Ollama returned HTTP {exc.response.status_code}"
+            ) from exc
+
+        try:
+            embeddings = response.json()["embeddings"]
+        except (KeyError, ValueError) as exc:
+            raise InvalidModelOutputError(
+                "Invalid embedding response returned by Ollama"
+            ) from exc
+
+        if len(embeddings) != len(texts):
+            raise InvalidModelOutputError("Embedding response size mismatch")
+
+        return embeddings

@@ -58,7 +58,7 @@ public class JwtUtil {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (Exception e) {
-            log.error("Token 解析失败: {}", e.getMessage());
+            log.error("jwt token validation failed, errorCode=AUTH_INVALID_TOKEN");
             throw new BusinessException(401, "Token 无效或已过期");
         }
     }

@@ -38,42 +38,44 @@ class NotificationListenerTest {
     void onPromptLikedShouldSendNotificationToAuthorWhenActorDiffers() {
         listener.onPromptLiked(new PromptLikeEvent(100L, 10L, 20L, LocalDateTime.of(2026, 4, 14, 11, 0)));
 
-        assertThat(sentMessages()).anyMatch(message ->
+        assertThat(queuedMessages()).anyMatch(message ->
                 message.contains("userId=20")
-                        && message.contains("user 10 like your prompt")
                         && message.contains("type=like")
                         && message.contains("relatedId=100"));
+        assertThat(queuedMessages()).noneMatch(message ->
+                message.contains("user 10 like your prompt"));
     }
 
     @Test
     void onPromptLikedShouldSkipNotificationForSelfLike() {
         listener.onPromptLiked(new PromptLikeEvent(100L, 10L, 10L, LocalDateTime.of(2026, 4, 14, 11, 1)));
 
-        assertThat(sentMessages()).isEmpty();
+        assertThat(queuedMessages()).isEmpty();
     }
 
     @Test
     void onPromptFavoriteShouldSendNotificationToAuthorWhenActorDiffers() {
         listener.onPromptFavorite(new PromptFavoriteEvent(101L, 11L, 21L, LocalDateTime.of(2026, 4, 14, 11, 2)));
 
-        assertThat(sentMessages()).anyMatch(message ->
+        assertThat(queuedMessages()).anyMatch(message ->
                 message.contains("userId=21")
-                        && message.contains("user 11 favorite your prompt")
                         && message.contains("type=favorite")
                         && message.contains("relatedId=101"));
+        assertThat(queuedMessages()).noneMatch(message ->
+                message.contains("user 11 favorite your prompt"));
     }
 
     @Test
     void onPromptFavoriteShouldSkipNotificationForSelfFavorite() {
         listener.onPromptFavorite(new PromptFavoriteEvent(101L, 11L, 11L, LocalDateTime.of(2026, 4, 14, 11, 3)));
 
-        assertThat(sentMessages()).isEmpty();
+        assertThat(queuedMessages()).isEmpty();
     }
 
-    private List<String> sentMessages() {
+    private List<String> queuedMessages() {
         return appender.list.stream()
                 .map(ILoggingEvent::getFormattedMessage)
-                .filter(message -> message.startsWith("send message ->"))
+                .filter(message -> message.startsWith("notification message queued"))
                 .toList();
     }
 }

@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock
+import uuid
 
 from fastapi.testclient import TestClient
 
@@ -33,3 +34,20 @@ def test_readiness_return_200():
             assert response.status_code == 200
     finally:
         app.dependency_overrides.clear()
+
+
+def test_request_id_is_echoed_in_response_header():
+    with TestClient(app) as client:
+        response = client.get(
+            "/v1/health",
+            headers={"X-Request-ID": "observability-test-1"},
+        )
+
+    assert response.headers["X-Request-ID"] == "observability-test-1"
+
+
+def test_request_id_is_generated_when_header_is_missing():
+    with TestClient(app) as client:
+        response = client.get("/v1/health")
+
+    assert str(uuid.UUID(response.headers["X-Request-ID"])) == response.headers["X-Request-ID"]

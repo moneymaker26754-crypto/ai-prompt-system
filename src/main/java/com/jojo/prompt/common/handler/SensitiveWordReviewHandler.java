@@ -19,20 +19,20 @@ public class SensitiveWordReviewHandler extends AbstractReviewHandler {
 
     @Override
     protected void doReview(Prompt prompt) {
-        log.info("[{}] start checking: promptId={}", getHandlerName(), prompt.getId());
         String content = prompt.getContent();
         String title = prompt.getTitle();
         if(!StringUtils.hasText(content) || !StringUtils.hasText(title)) {
+            log.warn("sensitive word review failed, promptId={}, status=empty_content", prompt.getId());
             throw new BusinessException("prompt content or title is empty");
         }
         //检查内容和标题是否含有敏感词
         for(String word : SENSITIVE_WORDS) {
             if(content.contains(word) || title.contains(word)) {
-                log.warn("[{}] check failed: promptId={}", getHandlerName(), prompt.getId());
+                log.warn("sensitive word review failed, promptId={}, status=sensitive_word_detected", prompt.getId());
                 throw new BusinessException("prompt content or title contains sensitive words");
             }
         }
-        log.info("[{}] check success: promptId={}", getHandlerName(), prompt.getId());
+        log.info("sensitive word review completed, promptId={}, status=success", prompt.getId());
     }
 
     @Override

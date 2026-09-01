@@ -16,7 +16,6 @@ public class NotificationListener {
     @Async("eventExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPromptLiked(PromptLikeEvent event) {
-        log.info("[notificationListener] send like message: promptId={},", event.getPromptId());
         //发送通知消息给prompt作者
         String type = "like";
         try {
@@ -29,17 +28,16 @@ public class NotificationListener {
                     type,
                     event.getPromptId());
 
-            log.info("[notificationListener] publish like message success: authorId={}", event.getAuthorId());
+            log.info("notification sent, eventType=like, authorId={}, promptId={}, status=success", event.getAuthorId(), event.getPromptId());
 
         }catch (Exception e) {
-            log.error("[notificationListener] publish like message failed", e);
+            log.error("notification send failed, eventType=like, authorId={}, promptId={}, status=failed", event.getAuthorId(), event.getPromptId(), e);
         }
     }
     //监听收藏事件 - 发送通知
     @Async("eventExecutor")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPromptFavorite(PromptFavoriteEvent event) {
-        log.info("[notificationListener] send favorite message: promptId={}", event.getPromptId());
         String type = "favorite";
         try {
             if(event.getUserId().equals(event.getAuthorId())) {
@@ -50,9 +48,9 @@ public class NotificationListener {
                     String.format("user %d favorite your prompt", event.getUserId()),
                     type,
                     event.getPromptId());
-            log.info("[notificationListener] publish favorite message success: authorId={}", event.getAuthorId());
+            log.info("notification sent, eventType=favorite, authorId={}, promptId={}, status=success", event.getAuthorId(), event.getPromptId());
         }catch (Exception e) {
-            log.error("[notificationListener] publish favorite message failed", e);
+            log.error("notification send failed, eventType=favorite, authorId={}, promptId={}, status=failed", event.getAuthorId(), event.getPromptId(), e);
         }
     }
 
@@ -60,6 +58,6 @@ public class NotificationListener {
     //模拟发送通知
     private void sendNotification(Long userId, String message, String type, Long relatedId) {
         //现实实现，保存到通知表。通过WebSocket推送给用户，或者通过第三方服务发送邮件或短信等
-        log.info("send message -> userId={}, message={}, type={}, relatedId={}", userId, message, type, relatedId);
+        log.info("notification message queued, userId={}, type={}, relatedId={}", userId, type, relatedId);
     }
 }

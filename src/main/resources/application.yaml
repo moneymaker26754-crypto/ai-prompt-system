@@ -29,19 +29,18 @@ knife4j:
   setting:
     language: zh_cn
 
-app:
-  ai:
-    provider: python
-    python:
-      base-url: http://127.0.0.1:8000
-      connect-timeout: 3s
-      read-timeout: 130s
+#app:
+#  ai:
+#    python:
+#      base-url: http://127.0.0.1:8000
+#      connect-timeout: 3s
+#      read-timeout: 135s
 
 management:
   endpoints:
     web:
       exposure:
-        include: "health"
+        include: "health,prometheus"
   endpoint:
     health:
       show-details: never

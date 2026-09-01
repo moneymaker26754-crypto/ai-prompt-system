@@ -18,7 +18,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {
-        log.warn("BusinessException: {}", e.getMessage());
+        log.warn("business exception handled, errorCode={}, status=failed", e.getCode());
         return Result.error(e.getCode(), e.getMessage());
     }
 
@@ -29,13 +29,13 @@ public class GlobalExceptionHandler {
                 ? result.getFieldError().getDefaultMessage()
                 : "ParameterValidationFailed";
 
-        log.warn("ParameterValidationFailed: {}", message);
+        log.warn("parameter validation failed, status=validation_error, field={}", result.getFieldError() != null ? result.getFieldError().getField() : "unknown");
         return Result.error(400, message);
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public Result<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
-        log.warn("HttpMessageNotReadable: {}", e.getMostSpecificCause().getMessage());
+        log.warn("http message not readable, status=invalid_json");
         return Result.error(400, "request body is not valid JSON");
     }
 
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
             }
         }
 
-        log.warn("DuplicateKeyException: {}", errorMessage);
+        log.warn("duplicate key exception handled, status=duplicate_key, constraint={}", message);
         return Result.error(400, message);
     }
     //@RequestParam/@PathVariable校验，在controller层加上@Validated注解
@@ -66,19 +66,19 @@ public class GlobalExceptionHandler {
                 .findFirst()
                 .map(ConstraintViolation::getMessage)
                 .orElse("parameter validation failed");
-        log.warn("ConstraintViolationException: {}", message);
+        log.warn("constraint violation exception handled, status=validation_error");
         return Result.error(400, message);
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
     public Result<Void> handleNoResourceFoundException(NoResourceFoundException e) {
-        log.debug("NoResourceFound: {}", e.getResourcePath());
+        log.debug("resource not found, path={}", e.getResourcePath());
         return Result.error(404, "resource not found");
     }
 
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
-        log.error("UnhandledException", e);
+        log.error("unhandled exception caught, status=internal_error", e);
         return Result.error("Busy");
     }
 }

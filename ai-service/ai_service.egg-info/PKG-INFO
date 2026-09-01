@@ -1,0 +1,20 @@
+Metadata-Version: 2.4
+Name: ai-service
+Version: 0.1.0
+Summary: Add your description here
+Requires-Python: >=3.13
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi[standard]>=0.141.1
+Requires-Dist: httpx>=0.28.1
+Requires-Dist: opentelemetry-api>=1.44.0
+Requires-Dist: opentelemetry-exporter-otlp>=1.44.0
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.65b0
+Requires-Dist: opentelemetry-instrumentation-httpx>=0.65b0
+Requires-Dist: opentelemetry-sdk>=1.44.0
+Requires-Dist: prometheus-client>=0.26.0
+Requires-Dist: pydantic-settings>=2.15.0
+Requires-Dist: sqlalchemy>=2.0.0
+Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: pgvector>=0.2.0
+Requires-Dist: alembic>=1.13.0
+Requires-Dist: FlagEmbedding>=1.2.0
