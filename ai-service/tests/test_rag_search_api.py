@@ -5,12 +5,12 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_retrieval_service
 from app.core.config import Settings, get_settings
 from app.main import app
-from app.rag.vector_store import SearchResult
+from app.rag.retriever import RetrievalCandidate
 
 
 class FakeRetrievalService:
     def __init__(self):
-        self.result = SearchResult(
+        self.result = RetrievalCandidate(
             chunk_id=uuid4(),
             document_id=uuid4(),
             content="Use the quickstart guide.",

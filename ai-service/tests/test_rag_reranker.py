@@ -5,13 +5,13 @@ from uuid import uuid4
 
 import pytest
 
-import app.rag.reranker as reranker_module
+import app.rag.retrieval.reranker as reranker_module
 from app.core.exceptions import ModelUnavailableError
-from app.rag.vector_store import SearchResult
+from app.rag.retriever import RetrievalCandidate
 
 
-def _candidate(content: str) -> SearchResult:
-    return SearchResult(
+def _candidate(content: str) -> RetrievalCandidate:
+    return RetrievalCandidate(
         chunk_id=uuid4(),
         document_id=uuid4(),
         content=content,
@@ -54,7 +54,7 @@ async def test_reranker_loads_once_lazily_on_cpu_and_returns_search_results(monk
 
     assert constructed == [("bge-reranker", False)]
     assert len(results) == 1
-    assert isinstance(results[0], SearchResult)
+    assert isinstance(results[0], RetrievalCandidate)
     assert results[0].content == "second"
     assert results[0].vector_score == 0.4
     assert results[0].rerank_score == 0.8

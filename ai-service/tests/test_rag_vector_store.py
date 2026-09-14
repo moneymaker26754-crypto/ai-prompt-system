@@ -3,6 +3,7 @@ from uuid import uuid4
 import pytest
 
 from app.rag.models import RagChunk
+from app.rag.retriever import RetrievalCandidate
 from app.rag import vector_store as vector_store_module
 from app.rag.vector_store import PgVectorStore, SearchMode
 
@@ -61,6 +62,7 @@ async def test_search_filters_by_knowledge_base_and_maps_chunk_fields():
     assert "rag_chunk.embedding IS NOT NULL" in str(session.statement)
     assert len(results) == 1
     result = results[0]
+    assert isinstance(result, RetrievalCandidate)
     assert result.chunk_id == chunk.id
     assert result.document_id == chunk.document_id
     assert result.source == "docs/intro.md"

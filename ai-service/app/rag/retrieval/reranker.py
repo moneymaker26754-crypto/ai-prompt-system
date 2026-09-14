@@ -3,7 +3,7 @@ from dataclasses import replace
 from typing import Any
 
 from app.core.exceptions import ModelUnavailableError
-from app.rag.vector_store import SearchResult
+from app.rag.retriever import RetrievalCandidate
 
 
 class BgeReranker:
@@ -41,9 +41,9 @@ class BgeReranker:
     async def rerank(
             self,
             query: str,
-            candidates: list[SearchResult],
+            candidates: list[RetrievalCandidate],
             top_k: int = 5,
-    ) -> list[SearchResult]:
+    ) -> list[RetrievalCandidate]:
         if not candidates:
             return []
         model = await self._get_model()

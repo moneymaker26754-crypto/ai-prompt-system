@@ -6,11 +6,11 @@ from uuid import uuid4
 import pytest
 from pydantic import ValidationError
 
-from app.rag.vector_store import SearchResult
+from app.rag.retriever import RetrievalCandidate
 
 
-def _result(source: str, chunk_index: int) -> SearchResult:
-    return SearchResult(
+def _result(source: str, chunk_index: int) -> RetrievalCandidate:
+    return RetrievalCandidate(
         chunk_id=uuid4(),
         document_id=uuid4(),
         content="text",
@@ -24,7 +24,7 @@ def _result(source: str, chunk_index: int) -> SearchResult:
 
 
 def test_evaluation_case_strips_text_and_rejects_invalid_relevant_chunk():
-    from app.rag.evaluate import EvaluationCase
+    from app.rag.evaluation.evaluate import EvaluationCase
 
     case = EvaluationCase.model_validate(
         {
@@ -61,7 +61,7 @@ def test_evaluation_schema_uses_relevant_chunk_objects():
 
 
 def test_load_eval_dataset_parses_nonempty_jsonl_lines(tmp_path):
-    from app.rag.evaluate import load_eval_dataset
+    from app.rag.evaluation.evaluate import load_eval_dataset
 
     dataset = tmp_path / "evaluation.jsonl"
     dataset.write_text(
@@ -79,7 +79,7 @@ def test_load_eval_dataset_parses_nonempty_jsonl_lines(tmp_path):
 
 
 def test_load_eval_dataset_reports_jsonl_line_for_invalid_case(tmp_path):
-    from app.rag.evaluate import load_eval_dataset
+    from app.rag.evaluation.evaluate import load_eval_dataset
 
     dataset = tmp_path / "evaluation.jsonl"
     dataset.write_text(
@@ -93,7 +93,7 @@ def test_load_eval_dataset_reports_jsonl_line_for_invalid_case(tmp_path):
 
 
 def test_load_eval_dataset_rejects_empty_files(tmp_path):
-    from app.rag.evaluate import load_eval_dataset
+    from app.rag.evaluation.evaluate import load_eval_dataset
 
     dataset = tmp_path / "evaluation.jsonl"
     dataset.write_text("\n \n", encoding="utf-8")
@@ -113,8 +113,32 @@ class FakeRetrievalService:
 
 
 @pytest.mark.anyio
+async def test_evaluate_reports_end_to_end_nearest_rank_p95(monkeypatch) -> None:
+    from app.rag.evaluation import evaluate
+
+    times = iter([1.0, 1.01, 2.0, 2.03])
+    monkeypatch.setattr(evaluate, "perf_counter", lambda: next(times))
+    cases = [
+        evaluate.EvaluationCase.model_validate(
+            {
+                "knowledge_base_id": "kb-1",
+                "query": query,
+                "relevant_chunks": [{"source": "docs/a.md", "chunk_index": 0}],
+            }
+        )
+        for query in ("first", "second")
+    ]
+
+    metrics = await evaluate.EvaluationService(
+        FakeRetrievalService([_result("docs/a.md", 0)])
+    ).evaluate(cases=cases, top_k=1, rerank=False)
+
+    assert metrics["p95_latency_ms"] == 30.0
+
+
+@pytest.mark.anyio
 async def test_evaluate_uses_source_and_scores_single_relevant_chunk():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
 
     retrieval_service = FakeRetrievalService([_result("docs/intro.md", 2)])
     case = EvaluationCase.model_validate(
@@ -129,6 +153,7 @@ async def test_evaluate_uses_source_and_scores_single_relevant_chunk():
         cases=[case], top_k=1, rerank=False
     )
 
+    assert metrics.pop("p95_latency_ms") >= 0
     assert metrics == {
         "recall@1": 1.0,
         "mrr@1": 1.0,
@@ -148,7 +173,7 @@ async def test_evaluate_uses_source_and_scores_single_relevant_chunk():
 
 @pytest.mark.anyio
 async def test_evaluate_deduplicates_retrieved_chunks_and_scores_multiple_relevant():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
 
     retrieval_service = FakeRetrievalService(
         [_result("docs/a.md", 0), _result("docs/a.md", 0), _result("docs/b.md", 1)]
@@ -171,6 +196,7 @@ async def test_evaluate_deduplicates_retrieved_chunks_and_scores_multiple_releva
         include_failed_queries=True,
     )
 
+    assert metrics.pop("p95_latency_ms") >= 0
     assert metrics == {
         "recall@3": 1.0,
         "mrr@3": 1.0,
@@ -182,7 +208,7 @@ async def test_evaluate_deduplicates_retrieved_chunks_and_scores_multiple_releva
 
 @pytest.mark.anyio
 async def test_evaluate_returns_zero_for_case_without_retrieved_relevant_chunk():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
 
     retrieval_service = FakeRetrievalService([_result("docs/other.md", 0)])
     case = EvaluationCase.model_validate(
@@ -197,12 +223,13 @@ async def test_evaluate_returns_zero_for_case_without_retrieved_relevant_chunk()
         cases=[case], top_k=1, rerank=False
     )
 
+    assert metrics.pop("p95_latency_ms") >= 0
     assert metrics == {"recall@1": 0.0, "mrr@1": 0.0, "queries": 1, "rerank": False}
 
 
 @pytest.mark.anyio
 async def test_evaluate_includes_structured_partial_recall_details_when_requested():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
 
     retrieval_service = FakeRetrievalService(
         [_result("docs/a.md", 0), _result("docs/other.md", 4)]
@@ -254,7 +281,7 @@ async def test_evaluate_includes_structured_partial_recall_details_when_requeste
 
 @pytest.mark.anyio
 async def test_evaluate_macro_averages_recall_and_reciprocal_rank():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
 
     class PerQueryRetrievalService:
         async def retrieve(self, **kwargs):
@@ -288,6 +315,7 @@ async def test_evaluate_macro_averages_recall_and_reciprocal_rank():
         rerank=False,
     )
 
+    assert metrics.pop("p95_latency_ms") >= 0
     assert metrics == {
         "recall@2": 0.5,
         "mrr@2": 0.25,
@@ -298,7 +326,7 @@ async def test_evaluate_macro_averages_recall_and_reciprocal_rank():
 
 @pytest.mark.anyio
 async def test_evaluate_rejects_empty_cases_and_invalid_top_k():
-    from app.rag.evaluate import EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationService
 
     service = EvaluationService(FakeRetrievalService([]))
 
@@ -335,7 +363,7 @@ class FakeComparisonRetrievalService:
 
 @pytest.mark.anyio
 async def test_compare_reuses_embeddings_and_reports_quality_and_database_p95():
-    from app.rag.evaluate import EvaluationCase, EvaluationService
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService
     from app.rag.vector_store import SearchMode
 
     cases = [
@@ -363,7 +391,7 @@ async def test_compare_reuses_embeddings_and_reports_quality_and_database_p95():
         }
     )
 
-    response = await EvaluationService(service).compare_exact_and_hnsw(cases)
+    response = await EvaluationService(object(), service).compare_exact_and_hnsw(cases)
 
     assert response.model_dump() == {
         "queries": 2,
@@ -395,7 +423,7 @@ async def test_compare_reuses_embeddings_and_reports_quality_and_database_p95():
 
 @pytest.mark.anyio
 async def test_compare_rejects_missing_hnsw_index():
-    from app.rag.evaluate import EvaluationCase, EvaluationService, HnswIndexNotFoundError
+    from app.rag.evaluation.evaluate import EvaluationCase, EvaluationService, HnswIndexNotFoundError
 
     case = EvaluationCase.model_validate(
         {
@@ -406,11 +434,14 @@ async def test_compare_rejects_missing_hnsw_index():
     )
 
     with pytest.raises(HnswIndexNotFoundError):
-        await EvaluationService(FakeComparisonRetrievalService({}, has_index=False)).compare_exact_and_hnsw([case])
+        await EvaluationService(
+            object(),
+            FakeComparisonRetrievalService({}, has_index=False),
+        ).compare_exact_and_hnsw([case])
 
 
 def test_cli_parses_arguments_and_writes_json(monkeypatch, capsys, tmp_path):
-    from app.rag import evaluate
+    from app.rag.evaluation import evaluate
 
     dataset = tmp_path / "evaluation.jsonl"
     calls = []
@@ -433,7 +464,7 @@ def test_cli_parses_arguments_and_writes_json(monkeypatch, capsys, tmp_path):
 
 @pytest.mark.anyio
 async def test_run_evaluation_closes_runtime_resources(monkeypatch, tmp_path):
-    from app.rag import evaluate
+    from app.rag.evaluation import evaluate
 
     events = []
 
@@ -448,20 +479,17 @@ async def test_run_evaluation_closes_runtime_resources(monkeypatch, tmp_path):
         async def dispose(self):
             events.append("engine_disposed")
 
-    class FakeSession:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *args):
-            events.append("session_closed")
-
     class FakeEvaluationService:
-        def __init__(self, retrieval_service):
+        def __init__(self, retrieval_service, dense_retriever):
             self.retrieval_service = retrieval_service
+            self.dense_retriever = dense_retriever
 
         async def evaluate(self, cases, top_k, rerank):
             assert cases == ["case"]
             assert (top_k, rerank) == (5, False)
+            assert self.retrieval_service[0] == "retrieval"
+            assert self.retrieval_service[1][0] == "hybrid"
+            assert self.dense_retriever[0] == "dense"
             return {"recall@5": 1.0, "mrr@5": 1.0, "queries": 1, "rerank": False}
 
     settings = SimpleNamespace(
@@ -476,12 +504,31 @@ async def test_run_evaluation_closes_runtime_resources(monkeypatch, tmp_path):
     monkeypatch.setattr(evaluate, "get_settings", lambda: settings)
     monkeypatch.setattr(evaluate.httpx, "AsyncClient", lambda **kwargs: FakeHttpClient())
     monkeypatch.setattr(evaluate, "create_async_engine", lambda url: engine)
-    monkeypatch.setattr(evaluate, "create_session_factory", lambda _: lambda: FakeSession())
+    session_factory = object()
+    monkeypatch.setattr(evaluate, "create_session_factory", lambda _: session_factory)
     monkeypatch.setattr(evaluate, "load_eval_dataset", lambda _: ["case"])
     monkeypatch.setattr(evaluate, "EmbeddingService", lambda *args: ("embedder", args))
-    monkeypatch.setattr(evaluate, "PgVectorStore", lambda session: ("store", session))
+    monkeypatch.setattr(
+        evaluate,
+        "DenseRetriever",
+        lambda embedder, factory: ("dense", embedder, factory),
+    )
+    monkeypatch.setattr(
+        evaluate,
+        "KeywordRetriever",
+        lambda factory: ("keyword", factory),
+    )
+    monkeypatch.setattr(
+        evaluate,
+        "HybridRetriever",
+        lambda dense, keyword: ("hybrid", dense, keyword),
+    )
     monkeypatch.setattr(evaluate, "BgeReranker", lambda model: ("reranker", model))
-    monkeypatch.setattr(evaluate, "RetrievalService", lambda **kwargs: ("retrieval", kwargs))
+    monkeypatch.setattr(
+        evaluate,
+        "RetrievalService",
+        lambda hybrid, reranker: ("retrieval", hybrid, reranker),
+    )
     monkeypatch.setattr(evaluate, "EvaluationService", FakeEvaluationService)
 
     metrics = await evaluate.run_evaluation(tmp_path / "evaluation.jsonl", 5, False)
@@ -492,4 +539,4 @@ async def test_run_evaluation_closes_runtime_resources(monkeypatch, tmp_path):
         "queries": 1,
         "rerank": False,
     }
-    assert events == ["session_closed", "http_closed", "engine_disposed"]
+    assert events == ["http_closed", "engine_disposed"]

@@ -1,31 +1,16 @@
-from dataclasses import dataclass
 from enum import StrEnum
 from time import perf_counter_ns
-from uuid import UUID
 
 from sqlalchemy import select, text
 
 from app.rag.models import RagChunk
+from app.rag.retriever import RetrievalCandidate
 
 
 class SearchMode(StrEnum):
     PLANNER = "planner"
     EXACT = "exact"
     HNSW = "hnsw"
-
-
-@dataclass
-class SearchResult:
-    chunk_id: UUID
-    document_id: UUID
-    content: str
-    source: str | None
-    file_name: str | None
-    chunk_index: int
-    char_start: int | None
-    char_end: int | None
-    vector_score: float
-    rerank_score: float | None = None
 
 
 class PgVectorStore:
@@ -39,7 +24,7 @@ class PgVectorStore:
             knowledge_base_id: str,
             top_k: int = 20,
             mode: SearchMode = SearchMode.PLANNER,
-    ) -> list[SearchResult]:
+    ) -> list[RetrievalCandidate]:
         await self._configure_search_mode(mode)
         statement = self._build_search_statement(
             embedding,
@@ -55,7 +40,7 @@ class PgVectorStore:
             knowledge_base_id: str,
             top_k: int,
             mode: SearchMode,
-    ) -> tuple[list[SearchResult], float]:
+    ) -> tuple[list[RetrievalCandidate], float]:
         await self._configure_search_mode(mode)
         statement = self._build_search_statement(
             embedding,
@@ -124,9 +109,9 @@ class PgVectorStore:
         )
 
     @staticmethod
-    def _map_search_results(rows) -> list[SearchResult]:
+    def _map_search_results(rows) -> list[RetrievalCandidate]:
         return [
-            SearchResult(
+            RetrievalCandidate(
                 chunk_id=chunk.id,
                 document_id=chunk.document_id,
                 content=chunk.content,

@@ -18,8 +18,8 @@ class RagSearchRequest(BaseModel):
 
     knowledge_base_id: str = Field(min_length=1, max_length=64)
     query: str = Field(min_length=1, max_length=2000)
-    top_k: int = Field(default=10, ge=1, le=20)
-    rerank: bool = False
+    top_k: int = Field(default=5, ge=1, le=20)
+    rerank: bool = True
 
     @field_validator("knowledge_base_id", "query", mode="before")
     @classmethod
@@ -39,7 +39,7 @@ class RagSearchResult(BaseModel):
     char_start: int | None
     char_end: int | None
 
-    vector_score: float
+    vector_score: float | None
     rerank_score: float | None = None
 
     content: str
@@ -117,7 +117,7 @@ class EvaluationRetrievedChunk(BaseModel):
     rank: int
     source: str | None
     chunk_index: int
-    vector_score: float
+    vector_score: float | None
     rerank_score: float | None = None
 
 

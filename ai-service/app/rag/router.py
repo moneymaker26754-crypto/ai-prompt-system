@@ -6,19 +6,22 @@ from pydantic import ValidationError
 
 from app.api.dependencies import (
     get_evaluation_service,
+    get_grounded_answer_service,
     get_ingest_service,
     get_retrieval_service,
     require_internal_api_key,
 )
 from app.core.config import Settings, get_settings
-from app.rag.evaluate import (
+from app.rag.evaluation.evaluate import (
     EvaluationService,
     HnswIndexNotFoundError,
     load_eval_dataset,
     resolve_eval_dataset_path,
 )
+from app.rag.generation.grounded_answer_service import GroundedAnswerService
+from app.rag.generation.schemas import RagAnswerResponse, RagAnswerRequest
 from app.rag.ingest_service import IngestService
-from app.rag.retrieval_service import RetrievalService
+from app.rag.retrieval.retrieval_service import RetrievalService
 from app.rag.schemas import (
     RagEvaluateRequest,
     RagCompareRequest,
@@ -150,3 +153,22 @@ async def compare_retrieval(
         return await service.compare_exact_and_hnsw(cases)
     except HnswIndexNotFoundError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+
+@router.post(
+    "/answer",
+    response_model=RagAnswerResponse,
+)
+async def answer(
+        request: RagAnswerRequest,
+
+        service: GroundedAnswerService = Depends(
+            get_grounded_answer_service
+        ),
+):
+
+    return await service.answer(
+        question=request.question,
+        knowledge_base_id=request.knowledge_base_id,
+    )

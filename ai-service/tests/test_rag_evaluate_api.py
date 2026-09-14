@@ -16,6 +16,7 @@ class FakeEvaluationService:
             "recall@5": 0.8667,
             "mrr@5": 0.7412,
             "rerank": kwargs["rerank"],
+            "p95_latency_ms": 12.3,
         }
 
 
@@ -62,6 +63,7 @@ def test_evaluate_requires_internal_key_and_reads_configured_dataset(tmp_path):
             "recall@5": 0.8667,
             "mrr@5": 0.7412,
             "rerank": True,
+            "p95_latency_ms": 12.3,
         }
         assert service.calls[0]["top_k"] == 5
         assert service.calls[0]["rerank"] is True
@@ -164,7 +166,7 @@ def test_compare_endpoint_loads_dataset_and_returns_both_modes(tmp_path):
 
 
 def test_compare_endpoint_returns_conflict_when_hnsw_index_is_missing(tmp_path):
-    from app.rag.evaluate import HnswIndexNotFoundError
+    from app.rag.evaluation.evaluate import HnswIndexNotFoundError
 
     class MissingIndexService:
         async def compare_exact_and_hnsw(self, cases):

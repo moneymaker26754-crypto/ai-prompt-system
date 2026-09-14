@@ -25,6 +25,7 @@ def test_rag_models_map_the_existing_singular_schema() -> None:
         "token_count",
         "metadata",
         "embedding",
+        "search_vector",
         "created_at",
     }
 
@@ -55,3 +56,4 @@ def test_rag_models_map_the_existing_singular_schema() -> None:
         for constraint in RagChunk.__table__.constraints
     )
     assert str(RagChunk.__table__.c.embedding.type) == "VECTOR(1024)"
+    assert str(RagChunk.__table__.c.search_vector.type) == "TSVECTOR"

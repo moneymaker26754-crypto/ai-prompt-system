@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     api_prefix: str = "/v1"
     environment: str = "dev"
 
-    ollama_base_url: str = "http://localhost:11434"
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        validation_alias=AliasChoices("AI_OLLAMA_BASE_URL", "OLLAMA_BASE_URL"),
+    )
     ollama_model: str = "qwen3.5:9b"
 
     ollama_connect_timeout: float = 5.0
@@ -47,6 +50,37 @@ class Settings(BaseSettings):
     rag_chunk_overlap: int = Field(
         default=120,
         validation_alias=AliasChoices("AI_RAG_CHUNK_OVERLAP", "RAG_CHUNK_OVERLAP"),
+    )
+    rag_chat_model: str = Field(
+        default="qwen3:8b",
+        validation_alias=AliasChoices("AI_RAG_CHAT_MODEL", "RAG_CHAT_MODEL"),
+    )
+    rag_retrieve_top_k: int = Field(
+        default=20,
+        ge=1,
+        validation_alias=AliasChoices("AI_RAG_RETRIEVE_TOP_K", "RAG_RETRIEVE_TOP_K"),
+    )
+    rag_final_top_k: int = Field(
+        default=5,
+        ge=1,
+        validation_alias=AliasChoices("AI_RAG_FINAL_TOP_K", "RAG_FINAL_TOP_K"),
+    )
+    rag_max_context_chars: int = Field(
+        default=12000,
+        ge=1,
+        validation_alias=AliasChoices(
+            "AI_RAG_MAX_CONTEXT_CHARS",
+            "RAG_MAX_CONTEXT_CHARS",
+        ),
+    )
+    rag_min_rerank_score: float = Field(
+        default=0.50,
+        ge=0,
+        le=1,
+        validation_alias=AliasChoices(
+            "AI_RAG_MIN_RERANK_SCORE",
+            "RAG_MIN_RERANK_SCORE",
+        ),
     )
 
     model_config = SettingsConfigDict(

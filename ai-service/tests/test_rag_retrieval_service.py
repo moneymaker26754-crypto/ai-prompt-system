@@ -3,12 +3,12 @@ from uuid import uuid4
 import pytest
 
 from app.core.exceptions import ModelUnavailableError
-from app.rag.retrieval_service import RetrievalService
-from app.rag.vector_store import SearchMode, SearchResult
+from app.rag.retrieval.retrieval_service import RetrievalService
+from app.rag.retriever import RetrievalCandidate, RetrievalQuery
 
 
-def _result(content: str) -> SearchResult:
-    return SearchResult(
+def _candidate(content: str) -> RetrievalCandidate:
+    return RetrievalCandidate(
         chunk_id=uuid4(),
         document_id=uuid4(),
         content=content,
@@ -17,124 +17,67 @@ def _result(content: str) -> SearchResult:
         chunk_index=0,
         char_start=0,
         char_end=len(content),
-        vector_score=0.9,
+        fusion_score=0.5,
     )
 
 
-class FakeEmbedder:
-    async def embed_query(self, query: str) -> list[float]:
-        self.query = query
-        return [0.2] * 1024
-
-
-class FakeVectorStore:
-    def __init__(self, results: list[SearchResult]):
+class _HybridRetriever:
+    def __init__(self, results):
         self.results = results
 
-    async def search(self, **kwargs) -> list[SearchResult]:
-        self.kwargs = kwargs
+    async def retrieve(self, request: RetrievalQuery, top_k: int):
+        self.request = request
+        self.top_k = top_k
         return self.results
 
 
-class UnavailableReranker:
+class _Reranker:
     async def rerank(self, **kwargs):
-        raise ModelUnavailableError("reranker model is unavailable")
+        self.kwargs = kwargs
+        return list(reversed(kwargs["candidates"]))[: kwargs["top_k"]]
 
 
 @pytest.mark.anyio
-async def test_retrieve_without_reranking_uses_default_candidates_and_final_slice():
-    candidates = [_result("first"), _result("second"), _result("third")]
-    embedder = FakeEmbedder()
-    vector_store = FakeVectorStore(candidates)
+async def test_retrieve_defaults_to_hybrid_top_20_and_reranked_top_5() -> None:
+    candidates = [_candidate(str(index)) for index in range(8)]
+    hybrid = _HybridRetriever(candidates)
+    reranker = _Reranker()
 
-    results = await RetrievalService(embedder, vector_store).retrieve(
+    results = await RetrievalService(hybrid, reranker).retrieve(
         query="how to start",
         knowledge_base_id="kb-1",
-        final_top_k=2,
-        rerank=False,
     )
 
-    assert embedder.query == "how to start"
-    assert vector_store.kwargs == {
-        "embedding": [0.2] * 1024,
-        "knowledge_base_id": "kb-1",
-        "top_k": 20,
+    assert hybrid.request == RetrievalQuery(text="how to start", knowledge_base_id="kb-1")
+    assert hybrid.top_k == 20
+    assert reranker.kwargs == {
+        "query": "how to start",
+        "candidates": candidates,
+        "top_k": 5,
     }
-    assert results == candidates[:2]
+    assert results == list(reversed(candidates))[:5]
 
 
 @pytest.mark.anyio
-async def test_retrieve_keeps_final_top_k_within_vector_candidate_count():
-    vector_store = FakeVectorStore([_result("only")])
+async def test_retrieve_without_reranking_slices_fused_candidates() -> None:
+    candidates = [_candidate("first"), _candidate("second"), _candidate("third")]
+    hybrid = _HybridRetriever(candidates)
 
-    await RetrievalService(FakeEmbedder(), vector_store).retrieve(
+    results = await RetrievalService(hybrid, None).retrieve(
         query="query",
         knowledge_base_id="kb-1",
         retrieve_top_k=2,
-        final_top_k=5,
+        final_top_k=3,
         rerank=False,
     )
 
-    assert vector_store.kwargs["top_k"] == 5
+    assert hybrid.top_k == 3
+    assert results == candidates
 
 
 @pytest.mark.anyio
-async def test_retrieve_propagates_reranker_unavailability_without_vector_fallback():
-    candidates = [_result("first")]
-    reranker = UnavailableReranker()
+async def test_retrieve_requires_reranker_when_reranking_is_enabled() -> None:
+    service = RetrievalService(_HybridRetriever([_candidate("first")]), None)
 
-    with pytest.raises(ModelUnavailableError):
-        await RetrievalService(
-            FakeEmbedder(), FakeVectorStore(candidates), reranker
-        ).retrieve(
-            query="query",
-            knowledge_base_id="kb-1",
-            rerank=True,
-        )
-
-
-@pytest.mark.anyio
-async def test_retrieve_by_embedding_forwards_benchmark_mode_without_embedding_again():
-    embedder = FakeEmbedder()
-    vector_store = FakeVectorStore([_result("first")])
-    service = RetrievalService(embedder, vector_store)
-
-    embedding = await service.embed_query("benchmark query")
-    results = await service.retrieve_by_embedding(
-        embedding=embedding,
-        knowledge_base_id="kb-1",
-        top_k=10,
-        mode=SearchMode.HNSW,
-    )
-
-    assert results[0].content == "first"
-    assert embedder.query == "benchmark query"
-    assert vector_store.kwargs == {
-        "embedding": [0.2] * 1024,
-        "knowledge_base_id": "kb-1",
-        "top_k": 10,
-        "mode": SearchMode.HNSW,
-    }
-
-
-@pytest.mark.anyio
-async def test_benchmark_by_embedding_returns_store_latency():
-    class BenchmarkVectorStore(FakeVectorStore):
-        async def benchmark_search(self, **kwargs):
-            self.kwargs = kwargs
-            return self.results, 7.25
-
-    vector_store = BenchmarkVectorStore([_result("first")])
-
-    results, latency_ms = await RetrievalService(
-        FakeEmbedder(), vector_store
-    ).benchmark_by_embedding(
-        embedding=[0.4] * 1024,
-        knowledge_base_id="kb-1",
-        top_k=10,
-        mode=SearchMode.EXACT,
-    )
-
-    assert results[0].content == "first"
-    assert latency_ms == 7.25
-    assert vector_store.kwargs["mode"] is SearchMode.EXACT
+    with pytest.raises(ModelUnavailableError, match="unavailable"):
+        await service.retrieve(query="query", knowledge_base_id="kb-1")

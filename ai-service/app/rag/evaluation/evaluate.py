@@ -3,6 +3,7 @@ import asyncio
 import json
 from math import ceil
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 import httpx
@@ -11,9 +12,12 @@ from pydantic import ValidationError
 from app.clients.ollama import OllamaClient
 from app.core.config import get_settings
 from app.database import create_async_engine, create_session_factory
+from app.rag.retrieval.dense_retriever import DenseRetriever
 from app.rag.embedder import EmbeddingService
-from app.rag.reranker import BgeReranker
-from app.rag.retrieval_service import RetrievalService
+from app.rag.retrieval.hybrid_retriever import HybridRetriever
+from app.rag.retrieval.keyword_retriever import KeywordRetriever
+from app.rag.retrieval.reranker import BgeReranker
+from app.rag.retrieval.retrieval_service import RetrievalService
 from app.rag.schemas import (
     EvaluationCase,
     EvaluationRetrievedChunk,
@@ -21,7 +25,8 @@ from app.rag.schemas import (
     RagComparisonResponse,
     RetrievalBenchmarkMetrics,
 )
-from app.rag.vector_store import PgVectorStore, SearchMode, SearchResult
+from app.rag.retriever import RetrievalCandidate
+from app.rag.vector_store import SearchMode
 
 
 class HnswIndexNotFoundError(RuntimeError):
@@ -62,8 +67,13 @@ def resolve_eval_dataset_path(dataset: str, dataset_dir: Path) -> Path:
 
 
 class EvaluationService:
-    def __init__(self, retrieval_service: RetrievalService):
+    def __init__(
+        self,
+        retrieval_service: RetrievalService,
+        dense_retriever: DenseRetriever | None = None,
+    ) -> None:
         self.retrieval_service = retrieval_service
+        self.dense_retriever = dense_retriever
 
     async def evaluate(
         self,
@@ -79,8 +89,10 @@ class EvaluationService:
 
         recalls: list[float] = []
         reciprocal_ranks: list[float] = []
+        latencies_ms: list[float] = []
         failed_queries: list[dict[str, Any]] = []
         for case in cases:
+            started_at = perf_counter()
             results = await self.retrieval_service.retrieve(
                 query=case.query,
                 knowledge_base_id=case.knowledge_base_id,
@@ -88,13 +100,14 @@ class EvaluationService:
                 final_top_k=top_k,
                 rerank=rerank,
             )
+            latencies_ms.append((perf_counter() - started_at) * 1000)
             relevant = {(chunk.source, chunk.chunk_index) for chunk in case.relevant_chunks}
             retrieved = [(result.source, result.chunk_index) for result in results]
             recall = len(set(retrieved) & relevant) / len(relevant)
             recalls.append(recall)
 
             reciprocal_rank = 0.0
-            for rank, chunk in enumerate(retrieved, start=1):aswed
+            for rank, chunk in enumerate(retrieved, start=1):
                 if chunk in relevant:
                     reciprocal_rank = 1.0 / rank
                     break
@@ -125,6 +138,7 @@ class EvaluationService:
             ),
             "queries": len(cases),
             "rerank": rerank,
+            "p95_latency_ms": round(_nearest_rank_p95(latencies_ms), 3),
         }
         if include_failed_queries:
             metrics["failed_queries"] = failed_queries
@@ -137,15 +151,15 @@ class EvaluationService:
         if not cases:
             raise ValueError("Evaluation cases must not be empty")
         embeddings = [
-            await self.retrieval_service.embed_query(case.query)
+            await self.dense_retriever.embed_query(case.query)
             for case in cases
         ]
-        if not await self.retrieval_service.has_hnsw_index():
+        if not await self.dense_retriever.has_hnsw_index():
             raise HnswIndexNotFoundError(
                 "HNSW index rag_chunk_embedding_hnsw is not available"
             )
 
-        result_sets: dict[SearchMode, list[list[SearchResult]]] = {
+        result_sets: dict[SearchMode, list[list[RetrievalCandidate]]] = {
             SearchMode.EXACT: [],
             SearchMode.HNSW: [],
         }
@@ -163,7 +177,7 @@ class EvaluationService:
                 else (SearchMode.HNSW, SearchMode.EXACT)
             )
             for mode in modes:
-                results, latency_ms = await self.retrieval_service.benchmark_by_embedding(
+                results, latency_ms = await self.dense_retriever.benchmark_by_embedding(
                     embedding=embedding,
                     knowledge_base_id=case.knowledge_base_id,
                     top_k=10,
@@ -189,7 +203,7 @@ class EvaluationService:
 
 def _calculate_metrics(
     cases: list[EvaluationCase],
-    result_sets: list[list[SearchResult]],
+    result_sets: list[list[RetrievalCandidate]],
     latencies_ms: list[float],
 ) -> RetrievalBenchmarkMetrics:
     values: dict[str, float] = {}
@@ -249,17 +263,18 @@ async def run_evaluation(path: Path, top_k: int, rerank: bool) -> dict[str, floa
             embedder = EmbeddingService(ollama_client, settings.rag_embedding_model)
             reranker = BgeReranker(settings.rag_reranker_model)
             session_factory = create_session_factory(engine)
-            async with session_factory() as session:
-                retrieval_service = RetrievalService(
-                    embedder=embedder,
-                    vector_store=PgVectorStore(session),
-                    reranker=reranker,
-                )
-                return await EvaluationService(retrieval_service).evaluate(
-                    cases=cases,
-                    top_k=top_k,
-                    rerank=rerank,
-                )
+            dense_retriever = DenseRetriever(embedder, session_factory)
+            keyword_retriever = KeywordRetriever(session_factory)
+            hybrid_retriever = HybridRetriever(dense_retriever, keyword_retriever)
+            retrieval_service = RetrievalService(hybrid_retriever, reranker)
+            return await EvaluationService(
+                retrieval_service,
+                dense_retriever,
+            ).evaluate(
+                cases=cases,
+                top_k=top_k,
+                rerank=rerank,
+            )
     finally:
         await engine.dispose()
 

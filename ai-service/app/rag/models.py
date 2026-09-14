@@ -4,7 +4,7 @@ from typing import Any
 
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func, text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -50,6 +50,7 @@ class RagChunk(Base):
         "metadata", JSONB, nullable=False, server_default=text("'{}'::jsonb")
     )
     embedding: Mapped[list[float] | None] = mapped_column(VECTOR(1024))
+    search_vector: Mapped[str | None] = mapped_column(TSVECTOR)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

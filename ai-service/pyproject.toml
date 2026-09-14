@@ -19,6 +19,8 @@ dependencies = [
     "pgvector>=0.2.0",
     "alembic>=1.13.0",
     "FlagEmbedding>=1.2.0",
+    "langchain-core>=1.6.3",
+    "langchain-ollama>=1.1.0",
 ]
 
 [dependency-groups]
