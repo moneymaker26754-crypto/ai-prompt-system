@@ -126,19 +126,38 @@ class _Rows:
     def all(self):
         return self.rows
 
+    def scalar_one(self):
+        return self.rows[0][0]
 
-class _RecordingSession:
-    def __init__(self, rows):
-        self.rows = rows
+
+class _StatsAwareSession:
+    """按 SQL 形状分发返回值的假 session：
+
+    - ts_stat 文本查询 → 词统计行 [(word, ndoc), ...]
+    - count(*) 查询     → [(total,)]
+    - FTS 查询          → [(chunk, score), ...]，并记录语句供断言
+    """
+
+    def __init__(self, stats_rows, fts_rows, total=1000):
+        self.stats_rows = stats_rows
+        self.fts_rows = fts_rows
+        self.total = total
+        self.fts_statements = []
+        self.stats_calls = 0
 
     async def execute(self, statement):
-        self.statement = statement
-        return _Rows(self.rows)
+        sql = str(statement)
+        if "ts_stat" in sql:
+            self.stats_calls += 1
+            return _Rows(self.stats_rows)
+        if "count(" in sql:
+            return _Rows([(self.total,)])
+        self.fts_statements.append(statement)
+        return _Rows(self.fts_rows)
 
 
-@pytest.mark.anyio
-async def test_keyword_retriever_uses_fts_and_maps_candidate_fields() -> None:
-    chunk = RagChunk(
+def _keyword_chunk() -> RagChunk:
+    return RagChunk(
         id=uuid4(),
         document_id=uuid4(),
         knowledge_base_id="kb-1",
@@ -148,18 +167,29 @@ async def test_keyword_retriever_uses_fts_and_maps_candidate_fields() -> None:
         char_end=18,
         metadata_={"source": "docs/keyword.md", "file_name": "keyword.md"},
     )
-    session = _RecordingSession([(chunk, 0.6)])
+
+
+@pytest.mark.anyio
+async def test_keyword_retriever_filters_low_idf_words_and_maps_fields() -> None:
+    chunk = _keyword_chunk()
+    # 语料 1000 chunks：threshold = 600；the(600)/and(700) 为低区分度词应被丢弃
+    session = _StatsAwareSession(
+        stats_rows=[("keyword", 10), ("query", 12), ("the", 600), ("and", 700)],
+        fts_rows=[(chunk, 0.6)],
+        total=1000,
+    )
     factory = _SessionFactory(session)
-    request = RetrievalQuery(text="keyword query", knowledge_base_id="kb-1")
+    request = RetrievalQuery(text="keyword query the and", knowledge_base_id="kb-1")
 
     results = await KeywordRetriever(factory).retrieve(request, top_k=9)
 
-    params = session.statement.compile().params
-    # 关键词通道已切换为 OR 语义 tsquery：自然语言查询按词元拆分后以 | 连接
+    statement = session.fts_statements[0]
+    params = statement.compile().params
+    # IDF 过滤后仅剩高区分度词，以 OR 语义进入 tsquery
     assert "keyword | query" in params.values()
     assert "kb-1" in params.values()
     assert 9 in params.values()
-    assert "@@" in str(session.statement)
+    assert "@@" in str(statement)
     assert results == [
         RetrievalCandidate(
             chunk_id=chunk.id,
@@ -173,4 +203,73 @@ async def test_keyword_retriever_uses_fts_and_maps_candidate_fields() -> None:
             keyword_score=0.6,
         )
     ]
-    assert factory.events == ["opened", "closed"]
+    # 统计加载 + FTS 检索各开一次会话
+    assert factory.events == ["opened", "closed", "opened", "closed"]
+
+
+@pytest.mark.anyio
+async def test_keyword_retriever_keeps_at_most_six_terms_by_idf() -> None:
+    # 8 个可区分词，ndoc 越小 IDF 越高；应保留 ndoc 最小的 6 个
+    tokens = [f"t{i}" for i in range(1, 9)]
+    session = _StatsAwareSession(
+        stats_rows=[(t, i) for i, t in enumerate(tokens, start=1)],
+        fts_rows=[],
+        total=1000,
+    )
+    request = RetrievalQuery(text=" ".join(tokens), knowledge_base_id="kb-1")
+
+    await KeywordRetriever(_SessionFactory(session)).retrieve(request, top_k=5)
+
+    params = session.fts_statements[0].compile().params
+    assert "t1 | t2 | t3 | t4 | t5 | t6" in params.values()
+    assert not any("t7" in str(p) for p in params.values())
+
+
+@pytest.mark.anyio
+async def test_keyword_retriever_abandons_channel_when_all_words_filtered() -> None:
+    # 全部是低区分度词：放弃关键词通道（不执行 FTS 查询，直接空结果）
+    session = _StatsAwareSession(
+        stats_rows=[("the", 900), ("of", 950)],
+        fts_rows=[(None, 1.0)],
+        total=1000,
+    )
+    request = RetrievalQuery(text="the of", knowledge_base_id="kb-1")
+
+    results = await KeywordRetriever(_SessionFactory(session)).retrieve(request, top_k=5)
+
+    assert results == []
+    assert session.fts_statements == []
+
+
+@pytest.mark.anyio
+async def test_keyword_retriever_drops_words_absent_from_corpus() -> None:
+    # 语料中不存在的词在 OR 语义下无贡献，直接丢弃
+    session = _StatsAwareSession(
+        stats_rows=[("known", 5)],
+        fts_rows=[],
+        total=1000,
+    )
+    request = RetrievalQuery(text="known absentword", knowledge_base_id="kb-1")
+
+    await KeywordRetriever(_SessionFactory(session)).retrieve(request, top_k=5)
+
+    params = session.fts_statements[0].compile().params
+    assert "known" in params.values()
+
+
+@pytest.mark.anyio
+async def test_keyword_retriever_caches_idf_stats_per_kb() -> None:
+    # ts_stat 全表扫描代价高：同一 KB 的统计在 TTL 内只加载一次
+    session = _StatsAwareSession(
+        stats_rows=[("keyword", 10), ("query", 12)],
+        fts_rows=[],
+        total=1000,
+    )
+    retriever = KeywordRetriever(_SessionFactory(session))
+    request = RetrievalQuery(text="keyword query", knowledge_base_id="kb-1")
+
+    await retriever.retrieve(request, top_k=5)
+    await retriever.retrieve(request, top_k=5)
+
+    assert session.stats_calls == 1
+    assert len(session.fts_statements) == 2
