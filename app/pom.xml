@@ -139,6 +139,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
+        <!-- 本地一级缓存（热点详情 L1，与 Redis L2 构成两级缓存） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
         <!-- 自研基础设施 Starter（分布式锁/限流/幂等/布隆） -->
         <dependency>
             <groupId>com.jojo.prompt</groupId>

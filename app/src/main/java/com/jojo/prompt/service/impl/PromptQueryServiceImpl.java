@@ -57,6 +57,8 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     private final RedisLockClient redisLockClient;
     private final RedisBloomFilter promptIdBloomFilter;
     private final PromptBloomWarmer promptBloomWarmer;
+    //本地一级缓存（L1，Caffeine）
+    private final PromptLocalCache promptLocalCache;
 
 
     //2.0引入redis，应对缓存穿透和雪崩，缓存读写分离做降级策略
@@ -71,6 +73,11 @@ public class PromptQueryServiceImpl implements PromptQueryService {
                 () -> redisCacheService.isPromptNullCache(id), false);
         if(nullCache){
             throw new BusinessException(404, "prompt not exist");
+        }
+        //L1 本地缓存命中：跳过 Redis 读/互斥重建，计数与点赞收藏状态仍实时合并
+        PromptVO localVO = promptLocalCache.get(id);
+        if (localVO != null) {
+            return buildCacheHitResult(localVO, id, currentUserId);
         }
         //先查询缓存
         PromptVO cacheVO = redisRead("prompt-detail-get",
@@ -131,9 +138,10 @@ public class PromptQueryServiceImpl implements PromptQueryService {
             vo.setIsLike(false);
             vo.setIsFavorite(false);
         }
-        //只用公开的和启用的用户才能写入缓存
+        //只用公开的和启用的用户才能写入缓存（Redis L2 + 本地 L1 同条件）
         if (prompt.getVisibility() == PromptVisibility.PUBLIC && prompt.getStatus() == PromptStatus.ENABLED) {
             redisWrite("prompt-detail-cache", () -> redisCacheService.cachePromptDetail(id, vo));
+            promptLocalCache.put(id, vo);
         }
 
         return vo;

@@ -43,6 +43,7 @@ class PromptQueryServiceImplTest {
     @Mock private RedisLockClient redisLockClient;
     @Mock private RedisBloomFilter promptIdBloomFilter;
     @Mock private PromptBloomWarmer promptBloomWarmer;
+    @org.mockito.Spy private PromptLocalCache promptLocalCache = new PromptLocalCache();
 
     @InjectMocks
     private PromptQueryServiceImpl service;
@@ -92,5 +93,30 @@ class PromptQueryServiceImplTest {
         service.queryPromptById(2L);
         verify(promptMapper, never()).selectById(2L);
         verify(redisLockClient).unlock(org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void localCacheHitSkipsRedisReadAndDb() {
+        com.jojo.prompt.dto.response.PromptVO cached = new com.jojo.prompt.dto.response.PromptVO();
+        cached.setId(3L);
+        cached.setUserId(11L);
+        promptLocalCache.put(3L, cached);
+
+        when(promptPermissionService.getCurrentUserIdOrNull()).thenReturn(null);
+        when(redisCacheService.isPromptNullCache(3L)).thenReturn(false);
+
+        service.queryPromptById(3L);
+
+        verify(redisCacheService, never()).getPromptDetailCache(3L);
+        verify(promptMapper, never()).selectById(3L);
+    }
+
+    @Test
+    void commandServiceInvalidationClearsLocalCache() {
+        com.jojo.prompt.dto.response.PromptVO cached = new com.jojo.prompt.dto.response.PromptVO();
+        cached.setId(4L);
+        promptLocalCache.put(4L, cached);
+        promptLocalCache.invalidate(4L);
+        org.junit.jupiter.api.Assertions.assertNull(promptLocalCache.get(4L));
     }
 }

@@ -45,6 +45,8 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     private final PromptMqProducer promptMqProducer;
     //Prompt ID 布隆过滤器（创建时实时写入，配合查询链路防穿透）
     private final RedisBloomFilter promptIdBloomFilter;
+    //本地一级缓存（写路径同点失效）
+    private final PromptLocalCache promptLocalCache;
 
 
     @Override
@@ -119,8 +121,9 @@ public class PromptCommandServiceImpl implements PromptCommandService {
             throw new BusinessException("prompt has been modified by others, please refresh and retry");
         }
 
-        //删除旧缓存
+        //删除旧缓存（Redis L2 + 本地 L1 同点失效）
         redisCacheService.deletePromptCache(dto.getId());
+        promptLocalCache.invalidate(dto.getId());
 
         //通过消息队列，异步审核更新操作
         String key = "UPDATE";
@@ -147,8 +150,9 @@ public class PromptCommandServiceImpl implements PromptCommandService {
             throw new BusinessException(403, "no permission to delete this prompt");
         }
         promptMapper.deleteById(id);
-        //删除旧缓存
+        //删除旧缓存（Redis L2 + 本地 L1 同点失效）
         redisCacheService.deletePromptCache(id);
+        promptLocalCache.invalidate(id);
     }
 
     public String copyPrompt(Long id, HttpServletRequest request) {

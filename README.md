@@ -57,10 +57,10 @@ flowchart LR
 - **T**：`@RateLimit` 注解 + ZSET 滑动窗口单条 Lua 原子判定（ZREMRANGEBYSCORE+ZCARD+ZADD），维度支持 IP/用户/SpEL；Redis 故障 fail-open。
 - **A**：JMH 滑动窗口 **728.5 vs 固定 914.4 ops/s（-20%）**；50 并发突刺测试恰好放行 limit 个（Lua 原子性验证）。登录/搜索限流已切换，复制接口新增注解限流。
 
-### 4. 缓存三防：布隆 + 互斥重建 + 空值/jitter
-- **S**：查询不存在的 ID 每次落 DB；热点详情缓存失效瞬间并发击穿。
-- **T**：自研 Redis bitmap 布隆（m/k 按 n 与误判率推导，双哈希派生，pipeline k 次位操作合并 1 RTT）+ 预热（防冷启动误 404）+ 互斥重建单飞 + 空值缓存。
-- **A**：预热实测 **1500 prompts / 3.9s / 位图 117KB**；布隆实测误判率 ≤ 理论值 2 倍裕量（10k 采样）；JMH add/mightContain ~750 ops/s；切片测试验证不存在 ID 零 DB 命中。
+### 4. 缓存三防 + 两级缓存：布隆 + 互斥重建 + L1 本地缓存
+- **S**：查询不存在的 ID 每次落 DB；热点详情缓存失效瞬间并发击穿；拐点实验进一步定位——即使命中 Redis 缓存，每次仍走 4 次 Redis RTT（Lettuce 池 8 在 100+ 并发先饱和）。
+- **T**：自研 Redis bitmap 布隆（m/k 按 n 与误判率推导，双哈希派生，pipeline k 次位操作合并 1 RTT）+ 预热（防冷启动误 404）+ 互斥重建单飞 + 空值缓存/jitter；另加 **Caffeine L1 本地缓存**（500 条/60s TTL/写路径同点失效，计数与点赞状态仍实时合并）。
+- **A**：预热实测 **1500 prompts / 3.9s / 位图 117KB**；布隆实测误判率 ≤ 理论值 2 倍裕量；JMH add/mightContain ~750 ops/s；L1 命中 **51ns vs Redis 613.7µs（≈12,000×）**；**端到端 view@100 并发 TPS 229.7 → 354.5（+54.3%），p50 270→163.5ms**（`docs/benchmarks/kneepoint-report.md`）。
 
 ### 5. 自研消息中间件 mini-mq（14 项测试全绿）
 - **S**：业务侧行为日志/通知与主链路耦合在进程内 @Async，无法独立演进；RabbitMQ 主链路不宜频繁变更。
@@ -87,7 +87,7 @@ flowchart LR
 | JMH 微基准（9 项） | Redis INCR 914 vs MySQL UPDATE 181；滑动窗口 -20%；布隆 ~750 | `docs/benchmarks/jmh-report.md` |
 | mini-MQ vs RabbitMQ | confirms 路径 1.83×；fire-and-forget 13.6×（fsync 差异） | `docs/benchmarks/mq-comparison.md` |
 | 计数 A/B 全链路 | 20/50 并发 redis-mq vs direct-db | `docs/benchmarks/report-2026-08-rag-counting.md` |
-| 并发拐点实验 | view 峰值 230 TPS@100u，400u 塌陷；瓶颈=连接池饱和 | `docs/benchmarks/kneepoint-report.md` |
+| 并发拐点实验 | view 峰值 230 TPS@100u，400u 塌陷；L1 两级缓存后 354.5 TPS（+54.3%） | `docs/benchmarks/kneepoint-report.md` |
 | RAG 检索矩阵 | dense R@5=0.5738；IDF-hybrid 0.5359（+7.2%）；+rerank 0.6456；chunk 消融 256→1600 | `docs/benchmarks/rag-keyword-idf.md` + `report-2026-08-rag-counting.md` |
 | RAG 压测 | TPS 饱和 ~69（嵌入瓶颈） | `docs/benchmarks/raw/p4_*.json` |
 
