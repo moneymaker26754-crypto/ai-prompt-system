@@ -45,7 +45,7 @@ flowchart LR
 ### 1. 互动计数链路：Redis 异步合并，直写 DB 的 ~5 倍吞吐
 - **S（问题）**：点赞/收藏/浏览/复制是高频写；直写 DB 单行 UPDATE 实测仅 **180.6 ops/s**（JMH），且热点行行锁冲突。
 - **T（方案）**：计数先写 Redis（INCR/ZINCRBY），脏集标记 + RabbitMQ 延迟队列合并回刷（dispatchKey 防重 + Lua 快照扣减 + 分布式锁串行化），TTL 加 jitter 防雪崩。
-- **A（数据）**：Redis INCR **914.4 ops/s（≈5.1×）**；全链路 A/B（20/50 并发）redis-mq 模式 TPS 显著优于 direct-db 且 DB 写入次数大幅下降（原始数据 `docs/benchmarks/raw/ab_*.json`）。
+- **A（数据）**：Redis INCR **914.4 ops/s（≈5.1×）**；全链路 A/B（20/50 并发）redis-mq 模式 TPS 显著优于 direct-db 且 DB 写入次数大幅下降（原始数据 `docs/benchmarks/raw/ab_*.json`）；并发拐点实验：view 峰值 **229.7 TPS @100 并发**、400 并发塌陷至 116 TPS，采样证据定位瓶颈为 Lettuce(8)/Druid(20) 连接池饱和（`docs/benchmarks/kneepoint-report.md`）。
 
 ### 2. 自研分布式锁（infra-starter）：20 线程竞争恰好互斥
 - **S**：计数同步、缓存重建等路径原用 setIfAbsent+uuid，无重入、无续期，长任务锁过期即并发。
@@ -87,6 +87,7 @@ flowchart LR
 | JMH 微基准（9 项） | Redis INCR 914 vs MySQL UPDATE 181；滑动窗口 -20%；布隆 ~750 | `docs/benchmarks/jmh-report.md` |
 | mini-MQ vs RabbitMQ | confirms 路径 1.83×；fire-and-forget 13.6×（fsync 差异） | `docs/benchmarks/mq-comparison.md` |
 | 计数 A/B 全链路 | 20/50 并发 redis-mq vs direct-db | `docs/benchmarks/report-2026-08-rag-counting.md` |
+| 并发拐点实验 | view 峰值 230 TPS@100u，400u 塌陷；瓶颈=连接池饱和 | `docs/benchmarks/kneepoint-report.md` |
 | RAG 检索矩阵 | dense R@5=0.5738；+rerank 0.6413；chunk 消融 256→1600 | 同上 + `rag-keyword-idf.md` |
 | RAG 压测 | TPS 饱和 ~69（嵌入瓶颈） | `docs/benchmarks/raw/p4_*.json` |
 
