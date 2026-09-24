@@ -55,9 +55,7 @@ public class RedisCountBenchmark {
     public void setup() {
         String host = System.getProperty("bench.redis.host", "localhost");
         int port = Integer.parseInt(System.getProperty("bench.redis.port", "6379"));
-        redis = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration(host, port)));
-        redis.afterPropertiesSet();
+        redis = BenchRedisSupport.pooledTemplate(host, port);
         redis.delete(List.of(INCR_KEY, ZSET_KEY, RATE_KEY));
 
         DefaultRedisScript<Long> slidingScript = new DefaultRedisScript<>();

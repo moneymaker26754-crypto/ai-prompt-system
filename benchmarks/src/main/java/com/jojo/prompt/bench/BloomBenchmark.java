@@ -36,9 +36,7 @@ public class BloomBenchmark {
     public void setup() {
         String host = System.getProperty("bench.redis.host", "localhost");
         int port = Integer.parseInt(System.getProperty("bench.redis.port", "6379"));
-        StringRedisTemplate redis = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration(host, port)));
-        redis.afterPropertiesSet();
+        StringRedisTemplate redis = BenchRedisSupport.pooledTemplate(host, port);
         // 与主项目一致：10 万元素、1% 误判率 → m≈958,506 bit，k=7
         filter = RedisBloomFilter.create(redis, "bench:bloom", 100_000L, 0.01d);
         for (int i = 0; i < 10_000; i++) {

@@ -20,7 +20,7 @@
 
 - [x] P0 基线修复 + 3 commit（d27e04e/776b57a/6144f0a）+ .gitignore pycache
 - [x] T2.1 多模块骨架（commit 6bc0c59；git 保留 rename 历史）
-- [x] P1 infra-starter（T1.1–T1.6，commit e9dc350；21 个集成测试打真实 Redis 全绿）
+- [x] P1 infra-starter（T1.1–T1.6，commit e9dc350；**修正**：初版集成测试因 Lettuce 工厂未 start 而静默跳过，已在 commit（fix: tests were silently skipped）修复并重跑——20/20 全绿打真实 Redis：lock 7 / rate-limit 4 / idempotent 3 / bloom 6）
 - [x] P2 主项目接入（commit 5542917：限流委托/计数锁替换/confirm 幂等/布隆+互斥重建/copy @RateLimit/异常处理 + 3 个缓存三防切片测试；app 全绿）
 - [~] P3 mini-mq 模块（subagent 3296e05e 后台开发中；骨架 pom 已注册 commit f938a7f）
 - [~] P6.1 JMH 基准模块（benchmarks/ 已建：Redis 计数/滑动窗口/锁/布隆/MySQL 直写；shade→dependency-plugin 绕开 plexus 配置坑）

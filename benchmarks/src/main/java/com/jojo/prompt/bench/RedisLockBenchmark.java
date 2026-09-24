@@ -42,9 +42,7 @@ public class RedisLockBenchmark {
     public void setup() {
         String host = System.getProperty("bench.redis.host", "localhost");
         int port = Integer.parseInt(System.getProperty("bench.redis.port", "6379"));
-        StringRedisTemplate redis = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration(host, port)));
-        redis.afterPropertiesSet();
+        StringRedisTemplate redis = BenchRedisSupport.pooledTemplate(host, port);
 
         PromptInfraProperties props = new PromptInfraProperties();
         props.getLock().setDefaultLeaseMs(30_000L);
