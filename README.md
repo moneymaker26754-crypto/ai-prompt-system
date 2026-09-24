@@ -1,323 +1,124 @@
 # AI Prompt System
 
-一个基于 `Spring Boot 3` + `Java 21` 的 Prompt 管理与优化后端项目。
+一个工程化程度接近企业级的 **Prompt 管理与 AI 优化平台后端**：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务（RAG/优化/流式），含自研消息中间件与两个自研 Spring Boot Starter，全部核心路径有基准数据支撑。
 
-涵盖了 Prompt 的创建、审核、查询、互动计数、热度排行，以及 AI 优化工作流串成一套完整的后端系统。
-
-## 项目定位
-
-这个项目更适合定义为：
-
-- Prompt 内容平台后端
-- AI Prompt 优化工作流后端
-- 带有 Redis + RabbitMQ + 审核链路的工程化 Spring Boot 项目
-
-它不是通用型 Agent 框架，但已经具备比较完整的 AI 工作流编排能力。
-
-## 核心能力
-
-- 用户注册、登录、JWT 鉴权、个人信息维护
-- Prompt 的创建、更新、删除、详情、分页查询
-- Prompt 分类管理
-- 点赞、收藏、复制、浏览统计
-- Redis 热门排行与搜索热词
-- 搜索历史记录
-- Prompt 发布审核链
-- Prompt 优化审核链
-- AI Prompt 分析、优化、复核
-- SSE 流式返回优化结果
-- 优化记录落库，并支持确认保存为正式 Prompt
-
-## 技术栈
-
-- `Java 21`
-- `Spring Boot 3.5.x`
-- `Spring Web`
-- `Spring Security`
-- `Spring AI`
-- `MyBatis-Plus`
-- `MySQL`
-- `Redis`
-- `RabbitMQ`
-- `Ollama`
-- `Knife4j / OpenAPI`
-- `JUnit 5 + Mockito`
-
-## 项目结构
-
-```text
-src/main/java/com/jojo/prompt
-├─ common
-│  ├─ config        # Spring / Redis / RabbitMQ / Security / AI 配置
-│  ├─ constant      # 状态、Redis Key、MQ 常量
-│  ├─ event         # 领域事件
-│  ├─ exception     # 统一异常处理
-│  ├─ filter        # JWT 过滤器
-│  ├─ handler       # Prompt 审核责任链
-│  ├─ listener      # 事件监听器
-│  └─ mq            # MQ 消息、生产者、消费者
-├─ controller       # REST API
-├─ dto              # 请求 / 响应对象
-├─ entity           # 数据库实体
-├─ mapper           # MyBatis-Plus Mapper
-├─ service
-│  ├─ agent         # AI 分析 / 优化 / 复核
-│  └─ impl          # 业务实现
-└─ converter        # Entity / VO 转换
+```mermaid
+flowchart LR
+    subgraph Java["app · Spring Boot 3 / Java 21"]
+        API[REST API + SSE]
+        CHAIN[审核责任链]
+        COUNT[Redis 计数/热度]
+        INFRA[prompt-infra-starter<br/>锁/限流/幂等/布隆]
+        MMQ[mini-mq-starter<br/>行为日志/通知]
+    end
+    subgraph PY["ai-service · FastAPI"]
+        RAG[混合检索 RAG + 重排]
+        AGENT[分析/优化/复核 Agent]
+    end
+    subgraph MW["中间件（Docker）"]
+        MYSQL[(MySQL 8)]
+        REDIS[(Redis 7)]
+        RABBIT[(RabbitMQ<br/>审核+计数主链路)]
+    end
+    API --> CHAIN --> RABBIT --> CHAIN
+    API --> COUNT --> REDIS
+    COUNT -->|延迟合并| RABBIT --> MYSQL
+    API --> RAG --> MYSQL
+    API --> INFRA --> REDIS
+    MMQ -->|渐进替换| RABBIT
 ```
 
-## 主要业务模块
-
-### 1. 用户与鉴权
-
-- 注册、登录、获取当前用户、更新资料、修改密码
-- 使用 `JWT` 进行无状态认证
-- 登录有限流与失败锁定逻辑
-
-公开接口主要包括：
-
-- `POST /api/user/register`
-- `POST /api/user/login`
-
-### 2. Prompt 内容管理
-
-- 创建 Prompt 后先进入 `REVIEWING`
-- 更新 Prompt 时使用版本号控制，避免并发覆盖
-- 支持公开查询、个人查询、分类筛选、标签筛选、全文搜索
-- 支持复制 Prompt 内容，并记录复制次数
-
-代表性接口：
-
-- `POST /api/prompts`
-- `PUT /api/prompts`
-- `DELETE /api/prompts/{id}`
-- `GET /api/prompts/{id}`
-- `GET /api/prompts/page`
-- `GET /api/prompts/mine/page`
-- `POST /api/prompts/{id}/copy`
-
-### 3. 点赞、收藏、搜索
-
-- 点赞 / 取消点赞
-- 收藏 / 取消收藏
-- 查询我的收藏
-- 搜索历史
-- 热门搜索词
-
-代表性接口：
-
-- `POST /api/prompts/{id}/like`
-- `DELETE /api/prompts/{id}/like`
-- `POST /api/prompts/{id}/favorite`
-- `DELETE /api/prompts/{id}/favorite`
-- `GET /api/prompts/myFavorites`
-- `GET /api/search/history`
-- `DELETE /api/search/history`
-- `GET /api/search/hot`
-
-### 4. 分类管理
-
-- 分类增删改查
-- 分类列表及分类下 Prompt 数量
-
-代表性接口：
-
-- `POST /api/categories`
-- `PUT /api/categories`
-- `DELETE /api/categories/{id}`
-- `GET /api/categories/{id}`
-- `GET /api/categories/list`
-- `GET /api/categories/list-with-count`
-
-## AI 优化工作流
-
-
-### 同步优化链路
-
-1. 前端提交原始 Prompt、模板 ID、优化目标、输出格式
-2. 先经过 Prompt 优化审核链
-3. `PromptAnalyzeAgent` 生成问题分析结果
-4. `PromptOptimizeAgent` 基于分析结果生成优化后的 Prompt
-5. `PromptReviewAgent` 对优化结果做二次复核并输出结构化评分
-6. 将优化记录、风险等级、评分、审核步骤落库
-7. 用户可将优化结果确认保存为正式 Prompt
-
-对应接口：
-
-- `POST /api/prompt-optimizations`
-- `GET /api/prompt-optimizations/{id}`
-- `POST /api/prompt-optimizations/confirm`
-
-### 流式优化链路
-
-项目还支持通过 `SSE` 流式返回优化结果。
-
-返回阶段通常包括：
-
-- `REVIEW`
-- `ANALYSIS`
-- `OPTIMIZING`
-- `TOKEN`
-- `DONE`
-
-对应接口：
-
-- `POST /api/prompt-optimizations/stream`
-
-示例请求文件保留在：
-
-- `examples/prompt-optimization-stream.http`
-
-## 审核与异步链路
-
-### Prompt 发布审核链
-
-Prompt 创建或更新后不会直接发布，而是：
-
-1. 写入数据库，状态设为 `REVIEWING`
-2. 事务提交后发送 RabbitMQ 审核消息
-3. 消费端执行责任链审核
-4. 通过则更新为 `ENABLED`
-5. 拒绝则更新为 `REJECTED`
-
-当前审核链包含：
-
-- 敏感词检查
-- 质量检查
-- 原创性检查
-
-### Prompt 优化审核链
-
-在进入 AI 优化前，先做基础审核：
-
-- 原始 Prompt 非空
-- 模板可用
-- 敏感词检查
-- 结构完整度检查
-
-这样可以把明显不合格的请求挡在模型调用之前。
-
-## Redis 与计数设计
-
-项目对浏览、点赞、收藏、复制这类高频操作做了 Redis 化处理。
-
-- 实时计数先写 Redis
-- 热度排行用 `ZSet`
-- 搜索词热度也写 Redis
-- 查询详情时合并 Redis 中的实时计数
-- 再通过 RabbitMQ 延迟消息异步回刷数据库
-
-这样做的目的：
-
-- 减少数据库写压力
-- 避免热点内容频繁直写数据库
-- 提高排行榜和详情页读取性能
-
-## RabbitMQ 设计
-
-项目使用 RabbitMQ 处理两类异步任务：
-
-- Prompt 审核
-- Prompt 互动计数异步同步
-
-其中计数同步使用“延迟队列 + 死信转发”的方式，把短时间内的多次互动合并后再落库。
-
-## 安全与限流
-
-项目已经实现了几类基础防护：
-
-- JWT 鉴权
-- 登录频率限制
-- 登录失败锁定
-- 搜索接口限流
-- Prompt 复制去重计数
-
-## 本地运行要求
-
-运行前需要准备：
-
-- `JDK 21`
-- `Maven`
-- `MySQL 8+`
-- `Redis`
-- `RabbitMQ`
-- `Ollama`
-
-`application-dev.yml` 中的默认依赖如下：
-
-- MySQL: `localhost:3306/ai_prompt`
-- Redis: `localhost:6379`
-- RabbitMQ: `localhost:5672`
-- Ollama: `http://localhost:11434`
-- 默认模型: `qwen3.5:9b`
-
-可以通过环境变量覆盖部分配置：
-
-- `DB_USERNAME`
-- `DB_PASSWORD`
-- `JWT_SECRET`
-- `OLLAMA_BASE_URL`
-- `OLLAMA_MODEL`
-- `DRUID_USERNAME`
-- `DRUID_PASSWORD`
-
-## 启动方式
-
-### 1. 配置基础设施
-
-先确保以下服务可用：
-
-- MySQL
-- Redis
-- RabbitMQ
-- Ollama
-
-### 2. 修改配置
-
-按本地环境调整：
-
-- `src/main/resources/application-dev.yml`
-
-### 3. 启动项目
+## 仓库结构（Maven 多模块 + Python 服务）
+
+| 模块 | 定位 |
+|---|---|
+| `app/` | 主服务：用户/JWT、Prompt CRUD 与版本控制、审核责任链、Redis 计数/热度、AI 优化工作流（经 Python 网关）、SSE 流式 |
+| `ai-service/` | AI 服务（FastAPI）：混合检索 RAG（dense+keyword+RRF+重排）、分析/优化/复核 Agent、流式输出、评测服务 |
+| `infra-starter/` | **自研基础设施 Starter**：可重入分布式锁 / 滑动窗口限流 / 幂等 / 布隆过滤器（Redis+Lua，主项目 dogfooding） |
+| `mini-mq/` | **自研消息中间件核心**：分段 append-only 存储、消费组游标、ack/重试/死信、延迟消息、Netty 私有协议 |
+| `mini-mq-spring-boot-starter/` | **自研 mini-mq 的 Starter**：MiniMqTemplate + @MiniMqListener + 健康检查 |
+| `benchmarks/` | JMH 微基准套件（全部性能数据可一键复现） |
+| `docs/benchmarks/` | 基准报告与原始数据 |
+
+## 简历亮点清单（STAR：问题 → 方案 → 数据）
+
+### 1. 互动计数链路：Redis 异步合并，直写 DB 的 ~5 倍吞吐
+- **S（问题）**：点赞/收藏/浏览/复制是高频写；直写 DB 单行 UPDATE 实测仅 **180.6 ops/s**（JMH），且热点行行锁冲突。
+- **T（方案）**：计数先写 Redis（INCR/ZINCRBY），脏集标记 + RabbitMQ 延迟队列合并回刷（dispatchKey 防重 + Lua 快照扣减 + 分布式锁串行化），TTL 加 jitter 防雪崩。
+- **A（数据）**：Redis INCR **914.4 ops/s（≈5.1×）**；全链路 A/B（20/50 并发）redis-mq 模式 TPS 显著优于 direct-db 且 DB 写入次数大幅下降（原始数据 `docs/benchmarks/raw/ab_*.json`）。
+
+### 2. 自研分布式锁（infra-starter）：20 线程竞争恰好互斥
+- **S**：计数同步、缓存重建等路径原用 setIfAbsent+uuid，无重入、无续期，长任务锁过期即并发。
+- **T**：Hash+计数可重入（HINCRBY）、Lua 释放校验 token 防误删、WatchDog 以 lease/3 间隔续租、Micrometer 指标。
+- **A**：集成测试 20 线程持锁竞争全部失败（互斥）；WatchDog 实测 300ms 租约存活超 1s；JMH 无竞争 361 对/s、4 线程竞争组 2167/s。
+
+### 3. 限流升级：滑动窗口替代固定窗口，-20% 吞吐换窗口精确
+- **S**：固定窗口 INCR+EXPIRE 在窗口边界可被 2× 突刺穿过。
+- **T**：`@RateLimit` 注解 + ZSET 滑动窗口单条 Lua 原子判定（ZREMRANGEBYSCORE+ZCARD+ZADD），维度支持 IP/用户/SpEL；Redis 故障 fail-open。
+- **A**：JMH 滑动窗口 **728.5 vs 固定 914.4 ops/s（-20%）**；50 并发突刺测试恰好放行 limit 个（Lua 原子性验证）。登录/搜索限流已切换，复制接口新增注解限流。
+
+### 4. 缓存三防：布隆 + 互斥重建 + 空值/jitter
+- **S**：查询不存在的 ID 每次落 DB；热点详情缓存失效瞬间并发击穿。
+- **T**：自研 Redis bitmap 布隆（m/k 按 n 与误判率推导，双哈希派生，pipeline k 次位操作合并 1 RTT）+ 预热（防冷启动误 404）+ 互斥重建单飞 + 空值缓存。
+- **A**：预热实测 **1500 prompts / 3.9s / 位图 117KB**；布隆实测误判率 ≤ 理论值 2 倍裕量（10k 采样）；JMH add/mightContain ~750 ops/s；切片测试验证不存在 ID 零 DB 命中。
+
+### 5. 自研消息中间件 mini-mq（14 项测试全绿）
+- **S**：业务侧行为日志/通知与主链路耦合在进程内 @Async，无法独立演进；RabbitMQ 主链路不宜频繁变更。
+- **T**：从零实现存储引擎（分段 append-only + 长度前缀 + 启动恢复 + 尾部损坏截断）、消费语义（组游标/ack/nack/重试 3 次转死信/延迟消息 50ms 调度）、Netty 私有协议（半包粘包重组、requestId 并发匹配）。
+- **A**：**「确认」路径发布吞吐 1340.5 ops/s，高于同机 RabbitMQ publisher-confirm（734.0 ops/s，1.83×），且 mini-mq 为每消息 fsync 而 RabbitMQ confirm 不刷盘；fire-and-forget 差距 13.6× 已定位为刷盘策略差异（批量组提交为已标注的优化项）。详见 `docs/benchmarks/mq-comparison.md`。
+
+### 6. 两个自研 Spring Boot Starter，主项目 dogfooding
+- **S**：横切能力（锁/限流/幂等/布隆）散落业务代码；mini-mq 客户端使用门槛高。
+- **T**：`prompt-infra-spring-boot-starter`（AutoConfiguration + 属性 + SPI 设计：IP/用户维度经 RequestDimension 解耦，不依赖 servlet/security）；`mini-mq-spring-boot-starter`（Template + @MiniMqListener 容器 + 健康检查，默认关闭的渐进替换开关）。
+- **A**：主项目接入成本 = 一个依赖 + 零 Java 配置；行为日志/通知链路经 `prompt.mq.mode` 一键在本地/mini-MQ 间切换，broker 故障自动回退本地（单测覆盖）；starter 端到端测试全绿。
+
+### 7. RAG 检索质量：三通道矩阵 + 审计修正
+- **S**：关键词通道 websearch_to_tsquery 为 AND 语义，79/79 查询恒为空，hybrid ≈ dense。
+- **T**：修正为词元 OR 语义 → 审计发现裸 OR 注入噪声（hybrid 0.500 vs dense 0.5738，**负结果如实记录**）→ 升级为 IDF 过滤低区分度词（ts_stat 语料统计 + ndoc≥60% 截断 + 最多 6 词）。
+- **A**：dense 基线 R@5=0.5738 / MRR@5=0.4211；+BGE 重排 R@5=0.6413（+11.8%，代价 CPU 重排延迟高）；EXACT vs HNSW 质量持平、P95 19.9ms vs 20.0ms；IDF 版结果见 `docs/benchmarks/rag-keyword-idf.md`。RAG 压测饱和点 ~69 TPS，瓶颈在本地嵌入推理（`docs/benchmarks/raw/p4_*.json`）。
+
+### 8. 企业级工程底座
+- 多模块 Maven + Docker Compose 全家桶 + OTel/Prometheus/Grafana/Tempo 可观测 + 统一异常/参数校验 + JWT 无状态认证 + 版本号乐观锁 + 幂等 confirm + 行为日志/通知异步解耦。
+
+## 基准数据速查
+
+| 实验 | 关键数字 | 报告 |
+|---|---|---|
+| JMH 微基准（9 项） | Redis INCR 914 vs MySQL UPDATE 181；滑动窗口 -20%；布隆 ~750 | `docs/benchmarks/jmh-report.md` |
+| mini-MQ vs RabbitMQ | confirms 路径 1.83×；fire-and-forget 13.6×（fsync 差异） | `docs/benchmarks/mq-comparison.md` |
+| 计数 A/B 全链路 | 20/50 并发 redis-mq vs direct-db | `docs/benchmarks/report-2026-08-rag-counting.md` |
+| RAG 检索矩阵 | dense R@5=0.5738；+rerank 0.6413；chunk 消融 256→1600 | 同上 + `rag-keyword-idf.md` |
+| RAG 压测 | TPS 饱和 ~69（嵌入瓶颈） | `docs/benchmarks/raw/p4_*.json` |
+
+所有数据可复现：JMH 命令见各报告；原始 JSON/CSV 在 `docs/benchmarks/raw/`。
+
+## 本地运行
 
 ```bash
-./mvnw spring-boot:run
+# 1. 基础设施（MySQL/Redis/RabbitMQ/OTel/Prometheus/Grafana/Tempo）
+docker compose up -d mysql redis rabbitmq
+# 2. 全量构建（聚合多模块）
+./mvnw clean test
+# 3. 启动主服务（dev：MySQL root/123456@ai_prompt、RabbitMQ admin/123456、Redis 6379）
+./mvnw -pl app -am spring-boot:run -Dspring-boot.run.profiles=dev
+# 4. AI 服务（Ollama + pgvector，可选）
+cd ai-service && .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 ```
 
-Windows:
+接口文档：`http://localhost:8080/doc.html`（Knife4j）。
 
-```powershell
-.\mvnw.cmd spring-boot:run
-```
+## 测试矩阵
 
-### 4. 查看接口文档
+| 模块 | 测试 | 状态 |
+|---|---|---|
+| app | 18 测试类（含缓存三防切片、MQ 降级、AI 网关） | `./mvnw -pl app -am test` 全绿 |
+| infra-starter | 20 个集成测试打真实 Redis（锁 7/限流 4/幂等 3/布隆 6） | 全绿 |
+| mini-mq | 14（存储 6/语义 7/端到端 1） | 全绿 |
+| mini-mq-spring-boot-starter | 1 端到端（真 broker 发布→@MiniMqListener 消费） | 全绿 |
+| ai-service | pytest 126+ | 全绿 |
 
-- Knife4j: `http://localhost:8080/doc.html`
-- OpenAPI: `http://localhost:8080/v3/api-docs`
+## 诚实边界
 
-## 测试
-
-运行测试：
-
-```bash
-./mvnw test
-```
-
-当前仓库已包含一批单元测试，覆盖了：
-
-- 审核责任链
-- 事件监听器
-- MQ 消费者
-- 点赞 / 收藏服务
-- Prompt 优化查询逻辑
-
-## 当前已知缺口
-
-有一些明显缺口：
-
-- 仓库中暂未提供数据库初始化 SQL / DDL
-- 没有 `docker-compose`，本地依赖需要手动准备
-- 没有前端页面，主要以接口和 SSE 示例演示
-- 部分源码中的中文注释和 Swagger 文案存在编码问题
-- Agent 能力更偏“固定工作流编排”，不是通用 Agent 框架
-
+- mini-mq 为学习型单机中间件：无分区/副本/集群/共识，README 明示，不以替代 RabbitMQ 为卖点。
+- 基准为单机 loopback 数据，用于相对比较，不作容量承诺；误差区间见原始 JSON。
+- RAG 重排为 CPU 推理，延迟高（中位 ~13.8s），已在报告中标注为取舍。

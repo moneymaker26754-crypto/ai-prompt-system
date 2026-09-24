@@ -22,13 +22,14 @@
 - [x] T2.1 多模块骨架（commit 6bc0c59；git 保留 rename 历史）
 - [x] P1 infra-starter（T1.1–T1.6，commit e9dc350；**修正**：初版集成测试因 Lettuce 工厂未 start 而静默跳过，已在 commit（fix: tests were silently skipped）修复并重跑——20/20 全绿打真实 Redis：lock 7 / rate-limit 4 / idempotent 3 / bloom 6）
 - [x] P2 主项目接入（commit 5542917：限流委托/计数锁替换/confirm 幂等/布隆+互斥重建/copy @RateLimit/异常处理 + 3 个缓存三防切片测试；app 全绿）
-- [~] P3 mini-mq 模块（subagent 3296e05e 后台开发中；骨架 pom 已注册 commit f938a7f）
-- [~] P6.1 JMH 基准模块（benchmarks/ 已建：Redis 计数/滑动窗口/锁/布隆/MySQL 直写；shade→dependency-plugin 绕开 plexus 配置坑）
-- [~] P6.3 RAG：兄弟仓库资产已收编 docs/benchmarks/；subagent a3d9b9ad 做关键词通道 IDF 改进+重评
-- [ ] P4 mini-mq-spring-boot-starter（等 P3 完成）
-- [ ] P5 主项目接入 mini-MQ 非关键链路（等 P3/P4）
-- [ ] P6.2 HTTP 全链路压测（等 JMH 基线后）
-- [ ] P7 README + 全量回归 + push + 亮点清单（T7.1–T7.4）
+- [x] P3 mini-mq 模块（commit 9328f26；subagent 81940238 交付，独立验收 14/14 全绿）
+- [x] P4 mini-mq-spring-boot-starter（commit 3780b54 内含；starter 端到端测试 1/1 绿）
+- [x] P5 主项目接入 mini-MQ（commit 3780b54；行为日志/通知经 mini-MQ + 本地降级，prompt.mq.mode 开关）
+- [~] P6.1 JMH 完成（jmh-report.md + 9 项数据）
+- [~] P6.3 RAG：subagent a3d9b9ad 最后矩阵运行中
+- [~] P6.4 mini-MQ vs RabbitMQ 同机对比（进行中）
+- [ ] P6.2 HTTP 全链路高并发找拐点（上一轮数据在 docs/benchmarks/raw/，100u+ 扩展待做）
+- [ ] P7 README + 全量回归 + push + 亮点清单
 
 ## Current Checkpoint
 
