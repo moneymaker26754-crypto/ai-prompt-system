@@ -1,4 +1,6 @@
-﻿# AI Prompt System
+> 本文档是 2026-09-24 精简前的旧版 README 存档：含 STAR 亮点清单与全部基准数据，供简历/面试准备使用。当前主页 README 已改为仅面向对象/内容/架构的精简版。
+
+# AI Prompt System
 
  **Prompt 管理与 AI 优化平台后端**：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务（RAG/优化/流式），含自研消息中间件与两个自研 Spring Boot Starter，全部核心路径有基准数据支撑。
 
