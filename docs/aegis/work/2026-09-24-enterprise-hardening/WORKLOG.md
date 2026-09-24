@@ -45,7 +45,9 @@
 
 ## Evidence Trail
 
-- P1 证据：infra-starter 21 测试全绿（lock 7 / rate-limit 4 / idempotent 3 / bloom 7；本机 Redis 6379）。
+- P1 证据：infra-starter **20/20 全绿打真实 Redis**（lock 7 / rate-limit 4 / idempotent 3 / bloom 6；已修复"静默跳过"验证漏洞并记入 commit 2a75af3）。
+- P2 真机证据（2026-09-24 12:55 冒烟）：应用 dev 配置启动 11.8s；RabbitMQ admin@5672 连接成功；布隆预热 1500 prompts / 3947ms / 位图 117KB（m=958506, k=7）。
+- P6.1 证据：JMH 9 项基准落盘 docs/benchmarks/（jmh-report.md + raw/jmh-results-2026-09-24.json）。
 - 环境事实：本机 Docker 容器全在（mysql8/my-redis/rabbitmq），Redis/MySQL/RabbitMQ 端口可用 → P6 压测可做真实中间件对比。
 
 ## Resume Hint
