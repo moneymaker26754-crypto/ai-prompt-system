@@ -1,0 +1,13 @@
+{
+  "endpoint": "java-like",
+  "users": 100,
+  "duration_s": 30,
+  "total_requests": 4849,
+  "tps": 161.63,
+  "ok": 4849,
+  "errors": 0,
+  "latency_mean_ms": 619.67,
+  "latency_p50_ms": 399.08,
+  "latency_p95_ms": 2005.99,
+  "latency_p99_ms": 3315.54
+}

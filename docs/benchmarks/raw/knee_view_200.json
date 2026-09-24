@@ -1,0 +1,13 @@
+{
+  "endpoint": "java-view",
+  "users": 200,
+  "duration_s": 30,
+  "total_requests": 5626,
+  "tps": 187.53,
+  "ok": 5626,
+  "errors": 0,
+  "latency_mean_ms": 1069.16,
+  "latency_p50_ms": 656.15,
+  "latency_p95_ms": 3646.82,
+  "latency_p99_ms": 6402.29
+}
