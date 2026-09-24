@@ -1,0 +1,32 @@
+{
+  "dense": [
+    {
+      "recall@5": 0.5738,
+      "mrr@5": 0.4211,
+      "hits@5": 53,
+      "queries": 79,
+      "latency_mean_ms": 49.04,
+      "latency_p50_ms": 39.26,
+      "latency_p95_ms": 43.34,
+      "latency_p99_ms": 348.31,
+      "recall@10": 0.673,
+      "mrr@10": 0.4339,
+      "run": 1
+    }
+  ],
+  "hybrid_rrf": [
+    {
+      "recall@5": 0.5,
+      "mrr@5": 0.3677,
+      "hits@5": 47,
+      "queries": 79,
+      "latency_mean_ms": 44.17,
+      "latency_p50_ms": 43.36,
+      "latency_p95_ms": 47.68,
+      "latency_p99_ms": 49.84,
+      "recall@10": 0.6561,
+      "mrr@10": 0.3891,
+      "run": 1
+    }
+  ]
+}

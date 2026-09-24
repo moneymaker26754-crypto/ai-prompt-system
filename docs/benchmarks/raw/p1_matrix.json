@@ -1,0 +1,41 @@
+{
+  "dense": [
+    {
+      "recall@5": 0.5738,
+      "mrr@5": 0.4217,
+      "hits@5": 53,
+      "queries": 79,
+      "latency_mean_ms": 77.98,
+      "latency_p50_ms": 71.56,
+      "latency_p95_ms": 88.21,
+      "latency_p99_ms": 97.34,
+      "run": 1
+    }
+  ],
+  "hybrid_rrf": [
+    {
+      "recall@5": 0.5738,
+      "mrr@5": 0.4295,
+      "hits@5": 53,
+      "queries": 79,
+      "latency_mean_ms": 92.4,
+      "latency_p50_ms": 92.75,
+      "latency_p95_ms": 105.34,
+      "latency_p99_ms": 113.44,
+      "run": 1
+    }
+  ],
+  "hybrid_rerank": [
+    {
+      "recall@5": 0.6413,
+      "mrr@5": 0.5095,
+      "hits@5": 58,
+      "queries": 79,
+      "latency_mean_ms": 15231.33,
+      "latency_p50_ms": 13853.72,
+      "latency_p95_ms": 22198.85,
+      "latency_p99_ms": 25495.9,
+      "run": 1
+    }
+  ]
+}

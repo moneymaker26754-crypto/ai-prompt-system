@@ -1,0 +1,13 @@
+{
+  "endpoint": "java-copy",
+  "users": 20,
+  "duration_s": 60,
+  "total_requests": 46141,
+  "tps": 769.02,
+  "ok": 46141,
+  "errors": 0,
+  "latency_mean_ms": 25.99,
+  "latency_p50_ms": 15.69,
+  "latency_p95_ms": 75.22,
+  "latency_p99_ms": 124.87
+}

@@ -1,0 +1,35 @@
+{
+  "mode": "direct-db",
+  "users": 50,
+  "duration_s": 60,
+  "loads": {
+    "java-view": {
+      "tps": 428.48,
+      "p95_ms": 389.25,
+      "p50_ms": 63.64,
+      "ok": 25709,
+      "errors": 0
+    },
+    "java-copy": {
+      "tps": 456.68,
+      "p95_ms": 357.13,
+      "p50_ms": 62.67,
+      "ok": 27401,
+      "errors": 0
+    },
+    "java-like": {
+      "tps": 445.92,
+      "p95_ms": 375.61,
+      "p50_ms": 60.8,
+      "ok": 26755,
+      "errors": 0
+    }
+  },
+  "total_requests": 79865,
+  "db_writes": 64056,
+  "db_writes_per_second": 1067.6,
+  "db_writes_per_1000_req": 802.05,
+  "com_update_delta": 58583,
+  "com_insert_delta": 5473,
+  "redis_commands_delta": 178984
+}

@@ -1,0 +1,1 @@
+﻿{"queries":79,"exact":{"recall_at_5":0.5738,"recall_at_10":0.673,"mrr_at_5":0.4217,"mrr_at_10":0.4345,"p95_latency_ms":19.905},"hnsw":{"recall_at_5":0.5738,"recall_at_10":0.673,"mrr_at_5":0.4217,"mrr_at_10":0.4345,"p95_latency_ms":20.039}}

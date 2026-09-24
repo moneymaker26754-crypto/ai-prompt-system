@@ -1,0 +1,159 @@
+﻿mode,query,recall@5,mrr@5,hit,latency_ms,top1,top1_chunk
+dense,What is the difference between generative AI models like GPT and earlier rule-based assistants?,0.0,0.0,0,470.11,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+dense,How did AI progress from statistical machine learning to modern generative AI?,0.0,0.0,0,154.39,rag-eval/corpus/microsoft__genai-beginners__01-introduction-to-genai__README.md,10
+dense,How do large language models work under the hood?,0.0,0.0,0,39.61,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,8
+dense,What are the differences between open-weight and proprietary language models?,0.5,0.3333,1,49.93,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,10
+dense,What is the difference between a foundation model and an LLM?,1.0,0.25,1,48.24,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,14
+dense,When should I choose fine-tuning versus retrieval augmented generation to improve an LLM?,0.5,0.5,1,44.82,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,5
+dense,What are the main harms to measure when using generative AI responsibly?,0.0,0.0,0,41.41,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,0
+dense,How can teams mitigate harmful content and lack of fairness in LLM applications?,0.0,0.0,0,39.89,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,7
+dense,What is prompt engineering and why is it needed?,1.0,0.3333,1,42.23,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,26
+dense,What is tokenization and how does it relate to model context windows?,1.0,0.3333,1,40.98,rag-eval/corpus/microsoft__genai-beginners__01-introduction-to-genai__README.md,15
+dense,How do temperature and top_p parameters affect model output randomness?,0.0,0.0,0,41.74,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,46
+dense,What is chain-of-thought prompting and when does it help?,1.0,1.0,1,44.46,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,6
+dense,How does few-shot prompting differ from zero-shot prompting?,0.0,0.0,0,46.12,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,2
+dense,What is least-to-most prompting?,1.0,1.0,1,45.33,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,16
+dense,How do I set up Azure OpenAI and obtain an API key for a text generation app?,0.5,0.25,1,43.67,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,16
+dense,Which libraries and SDKs can I use to build a text generation application?,0.0,0.0,0,38.57,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,2
+dense,What is the difference between a chatbot and a chat application?,1.0,1.0,1,39.54,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,6
+dense,How does a system message framework structure a chat assistant?,1.0,1.0,1,41.11,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,16
+dense,What customization options exist for building domain-specific chat applications?,1.0,0.5,1,38.82,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,9
+dense,How does semantic search differ from traditional keyword search?,1.0,1.0,1,41.05,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,6
+dense,What is cosine similarity and how is it used in vector search?,1.0,0.5,1,41.38,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,14
+dense,Why would an LLM application need function calling?,0.5,0.3333,1,37.94,rag-eval/corpus/microsoft__genai-beginners__11-integrating-with-function-calling__README.md,13
+dense,How do you define a function schema when integrating function calls into an LLM app?,0.0,0.0,0,42.75,rag-eval/corpus/microsoft__genai-beginners__11-integrating-with-function-calling__README.md,13
+dense,What usability and trust principles matter when designing AI application UX?,0.5,0.3333,1,39.66,rag-eval/corpus/microsoft__genai-beginners__12-designing-ux-for-ai-applications__README.md,7
+dense,How should an AI application surface explainability and user control?,0.5,0.3333,1,40.47,rag-eval/corpus/microsoft__genai-beginners__12-designing-ux-for-ai-applications__README.md,12
+dense,What are the common threats and risks to generative AI applications?,0.0,0.0,0,42.48,rag-eval/corpus/microsoft__genai-beginners__13-securing-ai-applications__README.md,0
+dense,What is AI red teaming and why is it used?,1.0,0.5,1,40.45,rag-eval/corpus/microsoft__genai-beginners__13-securing-ai-applications__README.md,32
+dense,What does the generative AI application lifecycle look like compared to MLOps?,0.5,0.25,1,42.28,rag-eval/corpus/microsoft__genai-beginners__14-the-generative-ai-application-lifecycle__README.md,2
+dense,How does retrieval augmented generation work end to end?,0.5,0.25,1,41.46,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,38
+dense,Why would you use RAG instead of fine-tuning a model?,0.0,0.0,0,39.31,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,35
+dense,What is the role of a vector database in a RAG system?,0.0,0.0,0,38.73,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,1
+dense,What are the benefits of open source models compared to proprietary ones?,1.0,1.0,1,39.4,rag-eval/corpus/microsoft__genai-beginners__16-open-source-models__README.md,4
+dense,"How do Llama 2, Mistral and Falcon compare as open models?",1.0,0.5,1,40.09,rag-eval/corpus/microsoft__genai-beginners__16-open-source-models__README.md,7
+dense,What are AI agents and what can they do beyond simple chat?,1.0,0.2,1,39.46,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,1
+dense,How do multi-agent workflows orchestrate several agents together?,1.0,0.3333,1,40.52,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,15
+dense,What are the basic elements of a well-designed prompt?,0.0,0.0,0,42.45,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,1
+dense,What general tips improve prompt design such as specificity and avoiding imprecision?,1.0,1.0,1,40.83,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,17
+dense,What everyday tasks can basic prompting handle like summarization and classification?,1.0,0.25,1,37.97,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,0
+dense,How do you prompt a model for text classification and information extraction?,1.0,1.0,1,43.33,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,6
+dense,What is self-consistency prompting?,1.0,1.0,1,39.43,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,17
+dense,What is the automatic prompt engineer (APE) technique?,0.5,1.0,1,39.71,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,35
+dense,What are the limitations of few-shot prompting?,0.0,0.0,0,40.12,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,2
+dense,How do multi-turn conversations with ChatGPT work?,0.0,0.0,0,41.04,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-chatgpt.md,9
+dense,How do system messages and instructions shape ChatGPT behavior?,0.0,0.0,0,41.2,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-chatgpt.md,4
+dense,What kinds of biases appear in LLM outputs and how does exemplar order matter?,1.0,1.0,1,42.52,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-reliability.md,4
+dense,How can you reduce factual hallucinations in LLM answers?,1.0,0.3333,1,41.83,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,5
+dense,What is prompt injection and how do you defend against it?,0.5,0.25,1,47.7,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,13
+dense,What is jailbreaking in the context of LLM prompts?,0.0,0.0,0,45.97,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,9
+dense,What is PAL (program-aided language models) prompting?,1.0,1.0,1,46.41,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-applications.md,7
+dense,What is a Ragas experiment and how do you run parameterized experiments?,0.5,0.3333,1,49.3,rag-eval/corpus/explodinggradients__ragas__docs__concepts__experimentation.md,3
+dense,What does the context precision metric measure in Ragas?,1.0,0.5,1,44.94,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__context_precision.md,11
+dense,"How is context recall computed in Ragas, including the non-LLM based version?",0.0,0.0,0,49.35,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__context_precision.md,3
+dense,What does the faithfulness metric measure in Ragas?,1.0,0.5,1,49.37,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__faithfulness.md,1
+dense,How does Ragas compute factual correctness and what is precision mode?,0.5,1.0,1,44.55,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__factual_correctness.md,0
+dense,What is an aspect critic and how does rubric-based scoring work in Ragas?,1.0,1.0,1,46.27,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__general_purpose.md,0
+dense,How does Ragas score tool call accuracy for agentic applications?,1.0,1.0,1,44.44,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__agents.md,10
+dense,How do I install pgvector and get started with it?,0.0,0.0,0,41.58,rag-eval/corpus/pgvector__pgvector__README.md,0
+dense,What are the HNSW and IVFFlat indexes in pgvector and their trade-offs?,0.5,1.0,1,49.44,rag-eval/corpus/pgvector__pgvector__README.md,8
+dense,How do you tune approximate nearest neighbor search in pgvector with ef_search?,0.0,0.0,0,44.18,rag-eval/corpus/pgvector__pgvector__README.md,70
+dense,What tech stack does the AI Prompt System use?,0.0,0.0,0,45.55,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+dense,How does the prompt publish review chain work with RabbitMQ?,1.0,1.0,1,46.61,rag-eval/corpus/project__README.md,5
+dense,How does the project use Redis for hot rankings and counters?,1.0,0.5,1,48.05,rag-eval/corpus/project__README.md,5
+dense,What coding guidelines does the project define for simplicity and surgical changes?,0.3333,0.2,1,42.37,rag-eval/corpus/project__CLAUDE.md,4
+dense,What did the ai-service placeholder scaffold implementation plan specify?,1.0,0.5,1,45.38,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,24
+dense,什么是提示工程？为什么需要它？,0.5,0.5,1,42.75,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,66
+dense,思维链提示（chain-of-thought）是什么？,1.0,0.5,1,43.31,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,40
+dense,RAG 检索增强生成是如何工作的？,1.0,1.0,1,40.73,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,5
+dense,AI Prompt System 用了哪些技术栈？,0.0,0.0,0,40.09,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+dense,向量数据库在语义搜索中的作用是什么？,1.0,0.3333,1,44.55,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,16
+dense,什么是余弦相似度？,1.0,0.3333,1,40.43,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,16
+dense,prompt 注入攻击如何防御？,0.0,0.0,0,42.38,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,13
+dense,什么是自我一致性提示（self-consistency）？,1.0,1.0,1,44.6,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,17
+dense,pgvector 的 HNSW 索引怎么使用？,0.0,0.0,0,47.83,rag-eval/corpus/pgvector__pgvector__README.md,8
+dense,Ragas 的忠实度（faithfulness）指标衡量什么？,1.0,1.0,1,44.15,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__faithfulness.md,0
+dense,负责任地使用生成式 AI 需要注意哪些危害？,0.0,0.0,0,40.49,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,0
+dense,开源模型和闭源模型有什么区别？,1.0,0.2,1,46.14,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,10
+dense,AI agent 是什么？,1.0,1.0,1,48.72,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,3
+dense,如何构建一个文本生成应用？,0.0,0.0,0,46.09,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,2
+dense,什么是 prompt injection 攻击？,1.0,1.0,1,45.66,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,2
+hybrid_rrf,What is the difference between generative AI models like GPT and earlier rule-based assistants?,0.0,0.0,0,50.83,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+hybrid_rrf,How did AI progress from statistical machine learning to modern generative AI?,0.0,0.0,0,44.55,rag-eval/corpus/microsoft__genai-beginners__01-introduction-to-genai__README.md,10
+hybrid_rrf,How do large language models work under the hood?,0.0,0.0,0,42.42,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,8
+hybrid_rrf,What are the differences between open-weight and proprietary language models?,0.5,0.3333,1,47.56,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,10
+hybrid_rrf,What is the difference between a foundation model and an LLM?,1.0,0.25,1,45.47,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,14
+hybrid_rrf,When should I choose fine-tuning versus retrieval augmented generation to improve an LLM?,0.5,0.5,1,45.9,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,5
+hybrid_rrf,What are the main harms to measure when using generative AI responsibly?,0.0,0.0,0,44.32,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,0
+hybrid_rrf,How can teams mitigate harmful content and lack of fairness in LLM applications?,0.0,0.0,0,47.96,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,7
+hybrid_rrf,What is prompt engineering and why is it needed?,1.0,1.0,1,51.05,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,11
+hybrid_rrf,What is tokenization and how does it relate to model context windows?,1.0,0.3333,1,50.52,rag-eval/corpus/microsoft__genai-beginners__01-introduction-to-genai__README.md,15
+hybrid_rrf,How do temperature and top_p parameters affect model output randomness?,0.0,0.0,0,46.52,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,46
+hybrid_rrf,What is chain-of-thought prompting and when does it help?,1.0,1.0,1,48.51,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,6
+hybrid_rrf,How does few-shot prompting differ from zero-shot prompting?,0.0,0.0,0,45.52,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,2
+hybrid_rrf,What is least-to-most prompting?,1.0,1.0,1,44.01,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,16
+hybrid_rrf,How do I set up Azure OpenAI and obtain an API key for a text generation app?,0.5,0.25,1,48.87,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,16
+hybrid_rrf,Which libraries and SDKs can I use to build a text generation application?,0.0,0.0,0,48.48,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,2
+hybrid_rrf,What is the difference between a chatbot and a chat application?,1.0,1.0,1,45.4,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,6
+hybrid_rrf,How does a system message framework structure a chat assistant?,1.0,1.0,1,44.01,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,16
+hybrid_rrf,What customization options exist for building domain-specific chat applications?,1.0,0.5,1,44.66,rag-eval/corpus/microsoft__genai-beginners__07-building-chat-applications__README.md,9
+hybrid_rrf,How does semantic search differ from traditional keyword search?,1.0,1.0,1,49.11,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,6
+hybrid_rrf,What is cosine similarity and how is it used in vector search?,1.0,0.5,1,44.85,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,14
+hybrid_rrf,Why would an LLM application need function calling?,0.5,0.3333,1,44.64,rag-eval/corpus/microsoft__genai-beginners__11-integrating-with-function-calling__README.md,13
+hybrid_rrf,How do you define a function schema when integrating function calls into an LLM app?,0.0,0.0,0,50.63,rag-eval/corpus/microsoft__genai-beginners__11-integrating-with-function-calling__README.md,13
+hybrid_rrf,What usability and trust principles matter when designing AI application UX?,0.5,0.3333,1,49.27,rag-eval/corpus/microsoft__genai-beginners__12-designing-ux-for-ai-applications__README.md,7
+hybrid_rrf,How should an AI application surface explainability and user control?,0.5,0.3333,1,46.41,rag-eval/corpus/microsoft__genai-beginners__12-designing-ux-for-ai-applications__README.md,12
+hybrid_rrf,What are the common threats and risks to generative AI applications?,0.0,0.0,0,42.99,rag-eval/corpus/microsoft__genai-beginners__13-securing-ai-applications__README.md,0
+hybrid_rrf,What is AI red teaming and why is it used?,1.0,0.5,1,46.9,rag-eval/corpus/microsoft__genai-beginners__13-securing-ai-applications__README.md,32
+hybrid_rrf,What does the generative AI application lifecycle look like compared to MLOps?,0.5,0.25,1,48.99,rag-eval/corpus/microsoft__genai-beginners__14-the-generative-ai-application-lifecycle__README.md,2
+hybrid_rrf,How does retrieval augmented generation work end to end?,0.5,0.25,1,49.86,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,38
+hybrid_rrf,Why would you use RAG instead of fine-tuning a model?,0.0,0.0,0,49.41,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,35
+hybrid_rrf,What is the role of a vector database in a RAG system?,0.0,0.0,0,46.0,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,1
+hybrid_rrf,What are the benefits of open source models compared to proprietary ones?,1.0,1.0,1,50.34,rag-eval/corpus/microsoft__genai-beginners__16-open-source-models__README.md,4
+hybrid_rrf,"How do Llama 2, Mistral and Falcon compare as open models?",1.0,0.5,1,48.51,rag-eval/corpus/microsoft__genai-beginners__16-open-source-models__README.md,7
+hybrid_rrf,What are AI agents and what can they do beyond simple chat?,1.0,0.2,1,49.92,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,1
+hybrid_rrf,How do multi-agent workflows orchestrate several agents together?,1.0,0.3333,1,45.94,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,15
+hybrid_rrf,What are the basic elements of a well-designed prompt?,0.0,0.0,0,46.41,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,1
+hybrid_rrf,What general tips improve prompt design such as specificity and avoiding imprecision?,1.0,1.0,1,46.42,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,17
+hybrid_rrf,What everyday tasks can basic prompting handle like summarization and classification?,1.0,0.25,1,48.52,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,0
+hybrid_rrf,How do you prompt a model for text classification and information extraction?,1.0,1.0,1,45.64,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-basic-usage.md,6
+hybrid_rrf,What is self-consistency prompting?,1.0,1.0,1,46.06,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,17
+hybrid_rrf,What is the automatic prompt engineer (APE) technique?,0.5,1.0,1,47.16,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,35
+hybrid_rrf,What are the limitations of few-shot prompting?,0.0,0.0,0,45.54,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,2
+hybrid_rrf,How do multi-turn conversations with ChatGPT work?,0.0,0.0,0,45.15,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-chatgpt.md,9
+hybrid_rrf,How do system messages and instructions shape ChatGPT behavior?,0.0,0.0,0,47.29,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-chatgpt.md,4
+hybrid_rrf,What kinds of biases appear in LLM outputs and how does exemplar order matter?,1.0,1.0,1,47.81,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-reliability.md,4
+hybrid_rrf,How can you reduce factual hallucinations in LLM answers?,1.0,0.3333,1,45.47,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-intro.md,5
+hybrid_rrf,What is prompt injection and how do you defend against it?,0.5,0.25,1,45.9,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,13
+hybrid_rrf,What is jailbreaking in the context of LLM prompts?,0.0,0.0,0,49.37,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,9
+hybrid_rrf,What is PAL (program-aided language models) prompting?,1.0,1.0,1,48.74,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-applications.md,7
+hybrid_rrf,What is a Ragas experiment and how do you run parameterized experiments?,0.5,0.3333,1,360.14,rag-eval/corpus/explodinggradients__ragas__docs__concepts__experimentation.md,3
+hybrid_rrf,What does the context precision metric measure in Ragas?,1.0,0.5,1,47.93,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__context_precision.md,11
+hybrid_rrf,"How is context recall computed in Ragas, including the non-LLM based version?",0.0,0.0,0,48.43,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__context_precision.md,3
+hybrid_rrf,What does the faithfulness metric measure in Ragas?,1.0,0.5,1,50.86,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__faithfulness.md,1
+hybrid_rrf,How does Ragas compute factual correctness and what is precision mode?,0.5,1.0,1,51.79,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__factual_correctness.md,0
+hybrid_rrf,What is an aspect critic and how does rubric-based scoring work in Ragas?,1.0,1.0,1,51.53,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__general_purpose.md,0
+hybrid_rrf,How does Ragas score tool call accuracy for agentic applications?,1.0,1.0,1,50.1,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__agents.md,10
+hybrid_rrf,How do I install pgvector and get started with it?,0.0,0.0,0,47.49,rag-eval/corpus/pgvector__pgvector__README.md,0
+hybrid_rrf,What are the HNSW and IVFFlat indexes in pgvector and their trade-offs?,0.5,1.0,1,52.81,rag-eval/corpus/pgvector__pgvector__README.md,8
+hybrid_rrf,How do you tune approximate nearest neighbor search in pgvector with ef_search?,0.0,0.0,0,49.58,rag-eval/corpus/pgvector__pgvector__README.md,70
+hybrid_rrf,What tech stack does the AI Prompt System use?,0.0,0.0,0,48.15,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+hybrid_rrf,How does the prompt publish review chain work with RabbitMQ?,1.0,1.0,1,49.28,rag-eval/corpus/project__README.md,5
+hybrid_rrf,How does the project use Redis for hot rankings and counters?,1.0,0.5,1,53.76,rag-eval/corpus/project__README.md,5
+hybrid_rrf,What coding guidelines does the project define for simplicity and surgical changes?,0.3333,0.2,1,51.94,rag-eval/corpus/project__CLAUDE.md,4
+hybrid_rrf,What did the ai-service placeholder scaffold implementation plan specify?,1.0,0.5,1,51.9,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,24
+hybrid_rrf,什么是提示工程？为什么需要它？,0.5,0.5,1,48.81,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,66
+hybrid_rrf,思维链提示（chain-of-thought）是什么？,1.0,0.5,1,47.81,rag-eval/corpus/microsoft__genai-beginners__05-advanced-prompts__README.md,40
+hybrid_rrf,RAG 检索增强生成是如何工作的？,1.0,1.0,1,49.45,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,5
+hybrid_rrf,AI Prompt System 用了哪些技术栈？,0.0,0.0,0,50.23,rag-eval/corpus/microsoft__genai-beginners__04-prompt-engineering-fundamentals__README.md,1
+hybrid_rrf,向量数据库在语义搜索中的作用是什么？,1.0,0.3333,1,48.22,rag-eval/corpus/microsoft__genai-beginners__15-rag-and-vector-databases__README.md,16
+hybrid_rrf,什么是余弦相似度？,1.0,0.3333,1,48.99,rag-eval/corpus/microsoft__genai-beginners__08-building-search-applications__README.md,16
+hybrid_rrf,prompt 注入攻击如何防御？,0.0,0.0,0,49.12,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,13
+hybrid_rrf,什么是自我一致性提示（self-consistency）？,1.0,1.0,1,50.88,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-advanced-usage.md,17
+hybrid_rrf,pgvector 的 HNSW 索引怎么使用？,0.0,0.0,0,50.75,rag-eval/corpus/pgvector__pgvector__README.md,8
+hybrid_rrf,Ragas 的忠实度（faithfulness）指标衡量什么？,1.0,1.0,1,47.76,rag-eval/corpus/explodinggradients__ragas__docs__concepts__metrics__available_metrics__faithfulness.md,0
+hybrid_rrf,负责任地使用生成式 AI 需要注意哪些危害？,0.0,0.0,0,48.4,rag-eval/corpus/microsoft__genai-beginners__03-using-generative-ai-responsibly__README.md,0
+hybrid_rrf,开源模型和闭源模型有什么区别？,1.0,0.2,1,48.76,rag-eval/corpus/microsoft__genai-beginners__02-exploring-and-comparing-different-llms__README.md,10
+hybrid_rrf,AI agent 是什么？,1.0,1.0,1,50.23,rag-eval/corpus/microsoft__genai-beginners__17-ai-agents__README.md,3
+hybrid_rrf,如何构建一个文本生成应用？,0.0,0.0,0,53.49,rag-eval/corpus/microsoft__genai-beginners__06-text-generation-apps__README.md,2
+hybrid_rrf,什么是 prompt injection 攻击？,1.0,1.0,1,53.92,rag-eval/corpus/dair-ai__Prompt-Engineering-Guide__guides__prompts-adversarial.md,2

@@ -1,0 +1,13 @@
+{
+  "endpoint": "rag-search",
+  "users": 50,
+  "duration_s": 60,
+  "total_requests": 4159,
+  "tps": 69.32,
+  "ok": 4159,
+  "errors": 0,
+  "latency_mean_ms": 722.9,
+  "latency_p50_ms": 642.36,
+  "latency_p95_ms": 1414.82,
+  "latency_p99_ms": 1924.63
+}

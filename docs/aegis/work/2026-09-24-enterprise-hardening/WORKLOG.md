@@ -23,18 +23,19 @@
 - [x] P1 infra-starter（T1.1–T1.6，commit e9dc350；21 个集成测试打真实 Redis 全绿）
 - [x] P2 主项目接入（commit 5542917：限流委托/计数锁替换/confirm 幂等/布隆+互斥重建/copy @RateLimit/异常处理 + 3 个缓存三防切片测试；app 全绿）
 - [~] P3 mini-mq 模块（subagent 3296e05e 后台开发中；骨架 pom 已注册 commit f938a7f）
-- [ ] P3 mini-mq 模块（T3.1–T3.5，计划走 subagent_fork）
-- [ ] P4 mini-mq-spring-boot-starter（T4.1–T4.2）
-- [ ] P5 主项目接入 mini-MQ 非关键链路（T5.1–T5.2）
-- [ ] P6 压测与数据报告（T6.1–T6.5）
+- [~] P6.1 JMH 基准模块（benchmarks/ 已建：Redis 计数/滑动窗口/锁/布隆/MySQL 直写；shade→dependency-plugin 绕开 plexus 配置坑）
+- [~] P6.3 RAG：兄弟仓库资产已收编 docs/benchmarks/；subagent a3d9b9ad 做关键词通道 IDF 改进+重评
+- [ ] P4 mini-mq-spring-boot-starter（等 P3 完成）
+- [ ] P5 主项目接入 mini-MQ 非关键链路（等 P3/P4）
+- [ ] P6.2 HTTP 全链路压测（等 JMH 基线后）
 - [ ] P7 README + 全量回归 + push + 亮点清单（T7.1–T7.4）
 
 ## Current Checkpoint
 
-- 活跃切片：P3（子代理开发中）+ 主线等待其汇报后进入 P4/P6。
-- P2 完成：`-pl app -am test` 全绿（18 测试类含新增 PromptQueryServiceImplTest）。
-- 分支/HEAD：master @ f938a7f。
+- 活跃切片：P6.1（JMH 运行准备）+ P3/P6.3 两个子代理并行。
+- 分支/HEAD：master @ f938a7f + 未提交（benchmarks 模块、docs/benchmarks 资产、worklog）。
 - 阻塞：无。
+- 关键资产：兄弟仓库 D:\Code\java_program\ai-prompt-benchmark 的历史数据（RAG 矩阵/计数 A/B/压测）已收编 docs/benchmarks/；历史结论 dense R@5=0.5738、裸 OR hybrid=0.500（负结果，已记录），IDF 改进在途。
 - 经验教训（重要，已记入代码）：根 pom pluginManagement 的 maven-compiler-plugin 配置里加 `<parameters>` 会破坏与 spring-boot-parent 的配置合并、导致 Lombok 注解处理器失效——参数名功能本就由 `maven.compiler.parameters` 提供，勿再在 plugin 配置里重复声明。
 - 设计决策记录（供 resume/README 引用）：
   - confirm 幂等用 SETNX 占位即可串行化并发，因此不再叠加 RedisLock（避免冗余，AGENTS 简化原则）；

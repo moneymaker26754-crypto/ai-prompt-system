@@ -1,0 +1,124 @@
+2026-09-21 18:00:16,843 INFO o.a.j.u.JMeterUtils: Setting Locale to en_EN
+2026-09-21 18:00:16,858 INFO o.a.j.JMeter: Loading user properties from: D:\Code\java_program\ai-prompt-benchmark\tools\apache-jmeter-5.6.3\bin\user.properties
+2026-09-21 18:00:16,859 INFO o.a.j.JMeter: Loading system properties from: D:\Code\java_program\ai-prompt-benchmark\tools\apache-jmeter-5.6.3\bin\system.properties
+2026-09-21 18:00:16,859 INFO o.a.j.JMeter: Setting JMeter property: users=20
+2026-09-21 18:00:16,859 INFO o.a.j.JMeter: Setting JMeter property: ramp=5
+2026-09-21 18:00:16,859 INFO o.a.j.JMeter: Setting JMeter property: duration=60
+2026-09-21 18:00:16,866 INFO o.a.j.JMeter: Copyright (c) 1998-2024 The Apache Software Foundation
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: Version 5.6.3
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: java.version=25.0.2
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: java.vm.name=OpenJDK 64-Bit Server VM
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: os.name=Windows 11
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: os.arch=amd64
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: os.version=10.0
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: file.encoding=UTF-8
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: java.awt.headless=true
+2026-09-21 18:00:16,867 INFO o.a.j.JMeter: Max memory     =1073741824
+2026-09-21 18:00:16,868 INFO o.a.j.JMeter: Available Processors =32
+2026-09-21 18:00:16,880 INFO o.a.j.JMeter: Default Locale=English (EN)
+2026-09-21 18:00:16,880 INFO o.a.j.JMeter: JMeter  Locale=English (EN)
+2026-09-21 18:00:16,880 INFO o.a.j.JMeter: JMeterHome=D:\Code\java_program\ai-prompt-benchmark\tools\apache-jmeter-5.6.3
+2026-09-21 18:00:16,880 INFO o.a.j.JMeter: user.dir  =D:\Code\java_program
+2026-09-21 18:00:16,881 INFO o.a.j.JMeter: PWD       =D:\Code\java_program
+2026-09-21 18:00:23,301 INFO o.a.j.JMeter: IP: 26.27.253.236 Name: LAPTOP-T1KMPHJ2 FullName: 26.27.253.236
+2026-09-21 18:00:23,319 INFO o.a.j.s.FileServer: Default base='D:\Code\java_program'
+2026-09-21 18:00:23,319 INFO o.a.j.s.FileServer: Set new base='D:\Code\java_program\ai-prompt-benchmark\jmeter'
+2026-09-21 18:00:23,539 INFO o.a.j.s.SaveService: Testplan (JMX) version: 2.2. Testlog (JTL) version: 2.2
+2026-09-21 18:00:23,561 INFO o.a.j.s.SaveService: Using SaveService properties version 5.0
+2026-09-21 18:00:23,567 INFO o.a.j.s.SaveService: Using SaveService properties file encoding UTF-8
+2026-09-21 18:00:23,570 INFO o.a.j.s.SaveService: Loading file: D:\Code\java_program\ai-prompt-benchmark\jmeter\rag_search.jmx
+2026-09-21 18:00:23,623 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/html is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-09-21 18:00:23,624 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xhtml+xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-09-21 18:00:23,624 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-09-21 18:00:23,624 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-09-21 18:00:23,624 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/vnd.wap.wml is org.apache.jmeter.protocol.http.parser.RegexpHTMLParser
+2026-09-21 18:00:23,624 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/css is org.apache.jmeter.protocol.http.parser.CssParser
+2026-09-21 18:00:23,649 INFO o.a.j.JMeter: Creating summariser <summary>
+2026-09-21 18:00:23,662 INFO o.a.j.e.StandardJMeterEngine: Running the test!
+2026-09-21 18:00:23,662 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-09-21 18:00:23,662 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-09-21 18:00:23,667 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must contain the string: '.functions.'
+2026-09-21 18:00:23,667 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must not contain the string: '.gui.'
+2026-09-21 18:00:23,733 INFO o.a.j.JMeter: Running test (1789984823733)
+2026-09-21 18:00:23,752 INFO o.a.j.e.StandardJMeterEngine: Starting ThreadGroup: 1 : users
+2026-09-21 18:00:23,752 INFO o.a.j.e.StandardJMeterEngine: Starting 20 threads for group users.
+2026-09-21 18:00:23,752 INFO o.a.j.e.StandardJMeterEngine: Thread will continue on error
+2026-09-21 18:00:23,753 INFO o.a.j.t.ThreadGroup: Starting thread group... number=1 threads=20 ramp-up=5 delayedStart=false
+2026-09-21 18:00:23,762 INFO o.a.j.t.ThreadGroup: Started thread group number 1
+2026-09-21 18:00:23,762 INFO o.a.j.e.StandardJMeterEngine: All thread groups have been started
+2026-09-21 18:00:23,818 INFO o.a.j.t.JMeterThread: Thread started: users 1-1
+2026-09-21 18:00:23,820 INFO o.a.j.s.FileServer: Stored: D:/Code/java_program/ai-prompt-benchmark/jmeter/queries.csv
+2026-09-21 18:00:23,846 INFO o.a.j.p.h.s.HTTPHCAbstractImpl: Local host = LAPTOP-T1KMPHJ2
+2026-09-21 18:00:23,852 INFO o.a.j.p.h.s.HTTPHC4Impl: HTTP request retry count = 0
+2026-09-21 18:00:23,852 INFO o.a.j.s.SampleResult: Note: Sample TimeStamps are START times
+2026-09-21 18:00:23,852 INFO o.a.j.s.SampleResult: sampleresult.default.encoding is set to UTF-8
+2026-09-21 18:00:23,852 INFO o.a.j.s.SampleResult: sampleresult.useNanoTime=true
+2026-09-21 18:00:23,854 INFO o.a.j.s.SampleResult: sampleresult.nanoThreadSleep=5000
+2026-09-21 18:00:24,066 INFO o.a.j.t.JMeterThread: Thread started: users 1-2
+2026-09-21 18:00:24,316 INFO o.a.j.t.JMeterThread: Thread started: users 1-3
+2026-09-21 18:00:24,566 INFO o.a.j.t.JMeterThread: Thread started: users 1-4
+2026-09-21 18:00:24,815 INFO o.a.j.t.JMeterThread: Thread started: users 1-5
+2026-09-21 18:00:25,064 INFO o.a.j.t.JMeterThread: Thread started: users 1-6
+2026-09-21 18:00:25,312 INFO o.a.j.t.JMeterThread: Thread started: users 1-7
+2026-09-21 18:00:25,562 INFO o.a.j.t.JMeterThread: Thread started: users 1-8
+2026-09-21 18:00:25,813 INFO o.a.j.t.JMeterThread: Thread started: users 1-9
+2026-09-21 18:00:26,062 INFO o.a.j.t.JMeterThread: Thread started: users 1-10
+2026-09-21 18:00:26,311 INFO o.a.j.t.JMeterThread: Thread started: users 1-11
+2026-09-21 18:00:26,561 INFO o.a.j.t.JMeterThread: Thread started: users 1-12
+2026-09-21 18:00:26,811 INFO o.a.j.t.JMeterThread: Thread started: users 1-13
+2026-09-21 18:00:27,062 INFO o.a.j.t.JMeterThread: Thread started: users 1-14
+2026-09-21 18:00:27,311 INFO o.a.j.t.JMeterThread: Thread started: users 1-15
+2026-09-21 18:00:27,561 INFO o.a.j.t.JMeterThread: Thread started: users 1-16
+2026-09-21 18:00:27,809 INFO o.a.j.t.JMeterThread: Thread started: users 1-17
+2026-09-21 18:00:28,059 INFO o.a.j.t.JMeterThread: Thread started: users 1-18
+2026-09-21 18:00:28,310 INFO o.a.j.t.JMeterThread: Thread started: users 1-19
+2026-09-21 18:00:28,560 INFO o.a.j.t.JMeterThread: Thread started: users 1-20
+2026-09-21 18:03:41,650 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-1
+2026-09-21 18:03:41,652 INFO o.a.j.t.JMeterThread: Thread finished: users 1-1
+2026-09-21 18:04:56,004 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-19
+2026-09-21 18:04:56,005 INFO o.a.j.t.JMeterThread: Thread finished: users 1-19
+2026-09-21 18:04:59,911 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-17
+2026-09-21 18:04:59,912 INFO o.a.j.t.JMeterThread: Thread finished: users 1-17
+2026-09-21 18:05:02,668 INFO o.a.j.r.Summariser: summary +      4 in 00:04:39 =    0.0/s Avg: 253262 Min: 197720 Max: 275538 Err:     0 (0.00%) Active: 17 Started: 20 Finished: 3
+2026-09-21 18:05:02,669 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-14
+2026-09-21 18:05:02,670 INFO o.a.j.t.JMeterThread: Thread finished: users 1-14
+2026-09-21 18:05:09,325 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-13
+2026-09-21 18:05:09,325 INFO o.a.j.t.JMeterThread: Thread finished: users 1-13
+2026-09-21 18:05:23,093 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-11
+2026-09-21 18:05:23,093 INFO o.a.j.t.JMeterThread: Thread finished: users 1-11
+2026-09-21 18:05:28,724 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-5
+2026-09-21 18:05:28,725 INFO o.a.j.t.JMeterThread: Thread finished: users 1-5
+2026-09-21 18:05:32,035 INFO o.a.j.r.Summariser: summary +      4 in 00:00:29 =    0.1/s Avg: 297542 Min: 282512 Max: 306969 Err:     0 (0.00%) Active: 13 Started: 20 Finished: 7
+2026-09-21 18:05:32,035 INFO o.a.j.r.Summariser: summary =      8 in 00:05:08 =    0.0/s Avg: 275402 Min: 197720 Max: 306969 Err:     0 (0.00%)
+2026-09-21 18:05:32,035 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-6
+2026-09-21 18:05:32,036 INFO o.a.j.t.JMeterThread: Thread finished: users 1-6
+2026-09-21 18:05:41,323 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-2
+2026-09-21 18:05:41,326 INFO o.a.j.t.JMeterThread: Thread finished: users 1-2
+2026-09-21 18:05:48,446 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-9
+2026-09-21 18:05:48,446 INFO o.a.j.t.JMeterThread: Thread finished: users 1-9
+2026-09-21 18:05:52,916 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-7
+2026-09-21 18:05:52,917 INFO o.a.j.t.JMeterThread: Thread finished: users 1-7
+2026-09-21 18:05:54,589 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-8
+2026-09-21 18:05:54,589 INFO o.a.j.t.JMeterThread: Thread finished: users 1-8
+2026-09-21 18:06:05,999 INFO o.a.j.r.Summariser: summary +      5 in 00:00:34 =    0.1/s Avg: 326790 Min: 317256 Max: 337436 Err:     0 (0.00%) Active: 8 Started: 20 Finished: 12
+2026-09-21 18:06:06,000 INFO o.a.j.r.Summariser: summary =     13 in 00:05:42 =    0.0/s Avg: 295166 Min: 197720 Max: 337436 Err:     0 (0.00%)
+2026-09-21 18:06:06,002 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-20
+2026-09-21 18:06:06,002 INFO o.a.j.t.JMeterThread: Thread finished: users 1-20
+2026-09-21 18:06:06,545 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-3
+2026-09-21 18:06:06,546 INFO o.a.j.t.JMeterThread: Thread finished: users 1-3
+2026-09-21 18:06:09,654 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-18
+2026-09-21 18:06:09,655 INFO o.a.j.t.JMeterThread: Thread finished: users 1-18
+2026-09-21 18:06:11,229 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-16
+2026-09-21 18:06:11,230 INFO o.a.j.t.JMeterThread: Thread finished: users 1-16
+2026-09-21 18:06:11,652 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-15
+2026-09-21 18:06:11,653 INFO o.a.j.t.JMeterThread: Thread finished: users 1-15
+2026-09-21 18:06:14,819 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-10
+2026-09-21 18:06:14,819 INFO o.a.j.t.JMeterThread: Thread finished: users 1-10
+2026-09-21 18:06:16,881 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-4
+2026-09-21 18:06:16,881 INFO o.a.j.t.JMeterThread: Thread finished: users 1-4
+2026-09-21 18:06:21,690 INFO o.a.j.t.JMeterThread: Stopping because end time detected by thread: users 1-12
+2026-09-21 18:06:21,693 INFO o.a.j.t.JMeterThread: Thread finished: users 1-12
+2026-09-21 18:06:21,696 INFO o.a.j.e.StandardJMeterEngine: Notifying test listeners of end of test
+2026-09-21 18:06:21,696 INFO o.a.j.s.FileServer: Close: D:/Code/java_program/ai-prompt-benchmark/jmeter/queries.csv
+2026-09-21 18:06:21,735 INFO o.a.j.r.Summariser: summary +      7 in 00:00:16 =    0.4/s Avg: 346859 Min: 341592 Max: 355127 Err:     0 (0.00%) Active: 0 Started: 20 Finished: 20
+2026-09-21 18:06:21,735 INFO o.a.j.r.Summariser: summary =     20 in 00:05:58 =    0.1/s Avg: 313259 Min: 197720 Max: 355127 Err:     0 (0.00%)

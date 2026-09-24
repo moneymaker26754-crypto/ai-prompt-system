@@ -1,0 +1,35 @@
+{
+  "mode": "redis-mq",
+  "users": 50,
+  "duration_s": 60,
+  "loads": {
+    "java-view": {
+      "tps": 491.12,
+      "p95_ms": 345.81,
+      "p50_ms": 51.58,
+      "ok": 29467,
+      "errors": 0
+    },
+    "java-copy": {
+      "tps": 496.67,
+      "p95_ms": 326.55,
+      "p50_ms": 59.15,
+      "ok": 29800,
+      "errors": 0
+    },
+    "java-like": {
+      "tps": 310.55,
+      "p95_ms": 591.08,
+      "p50_ms": 57.25,
+      "ok": 18633,
+      "errors": 0
+    }
+  },
+  "total_requests": 77900,
+  "db_writes": 15877,
+  "db_writes_per_second": 264.62,
+  "db_writes_per_1000_req": 203.81,
+  "com_update_delta": 602,
+  "com_insert_delta": 15275,
+  "redis_commands_delta": 706563
+}
