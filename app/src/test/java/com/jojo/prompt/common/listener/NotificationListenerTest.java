@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class NotificationListenerTest {
 
-    private final NotificationListener listener = new NotificationListener();
+    private final NotificationListener listener = new NotificationListener(null);
     private Logger logger;
     private ListAppender<ILoggingEvent> appender;
 

@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class BehaviorLogListenerTest {
 
-    private final BehaviorLogListener listener = new BehaviorLogListener();
+    private final BehaviorLogListener listener = new BehaviorLogListener(null);
     private Logger logger;
     private ListAppender<ILoggingEvent> appender;
 

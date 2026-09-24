@@ -144,6 +144,11 @@
             <groupId>com.jojo.prompt</groupId>
             <artifactId>prompt-infra-spring-boot-starter</artifactId>
         </dependency>
+        <!-- 自研 mini-mq Starter（行为日志/通知链路渐进替换，默认关闭） -->
+        <dependency>
+            <groupId>com.jojo.prompt</groupId>
+            <artifactId>mini-mq-spring-boot-starter</artifactId>
+        </dependency>
         <!--Micrometer Tracing + OpenTelemetry-->
         <dependency>
             <groupId>io.micrometer</groupId>

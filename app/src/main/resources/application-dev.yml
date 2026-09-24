@@ -59,6 +59,13 @@ spring:
 
 
 prompt:
+  mq:
+    # 事件链路模式：local=进程内 @Async（默认） | minimq=经自研 mini-MQ 解耦投递（需同时开启 prompt.mini-mq.enabled）
+    mode: local
+  mini-mq:
+    enabled: false
+    host: localhost
+    port: 16888
   count:
     sync-delay-ms: 60000
     rescan-interval-ms: 300000
