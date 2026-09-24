@@ -1,7 +1,24 @@
+import re
+
 from sqlalchemy import func, select
 
 from app.rag.models import RagChunk
 from app.rag.retriever import RetrievalCandidate, RetrievalQuery
+
+
+def build_query_vector(text: str):
+    """OR-semantics tsquery for natural-language queries.
+
+    The previous websearch_to_tsquery('simple', q) applies AND semantics to
+    unquoted words, so a natural question only matches a chunk when EVERY word
+    appears together in it — effectively always empty. Splitting into word
+    tokens joined by '|' turns the keyword channel into a usable lexical
+    retriever (ranking still handled by ts_rank_cd).
+    """
+    tokens = re.findall(r"[A-Za-z0-9]+|[\u4e00-\u9fff]+", text)
+    if not tokens:
+        return func.websearch_to_tsquery("simple", text)
+    return func.to_tsquery("simple", " | ".join(tokens))
 
 
 class KeywordRetriever:
@@ -13,7 +30,7 @@ class KeywordRetriever:
         request: RetrievalQuery,
         top_k: int = 20,
     ) -> list[RetrievalCandidate]:
-        query_vector = func.websearch_to_tsquery("simple", request.text)
+        query_vector = build_query_vector(request.text)
         rank = func.ts_rank_cd(RagChunk.search_vector, query_vector)
         statement = (
             select(RagChunk, rank.label("keyword_score"))

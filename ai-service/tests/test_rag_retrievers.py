@@ -155,7 +155,8 @@ async def test_keyword_retriever_uses_fts_and_maps_candidate_fields() -> None:
     results = await KeywordRetriever(factory).retrieve(request, top_k=9)
 
     params = session.statement.compile().params
-    assert "keyword query" in params.values()
+    # 关键词通道已切换为 OR 语义 tsquery：自然语言查询按词元拆分后以 | 连接
+    assert "keyword | query" in params.values()
     assert "kb-1" in params.values()
     assert 9 in params.values()
     assert "@@" in str(session.statement)
