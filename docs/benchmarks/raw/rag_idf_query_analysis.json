@@ -1,0 +1,16 @@
+{
+  "queries": 79,
+  "kb_main_total_chunks": 892,
+  "stopword_threshold_ndoc": 535.2,
+  "empty_keyword_channel_queries": 5,
+  "empty_ratio": 0.0633,
+  "mean_kept_terms": 5.08,
+  "queries_with_max_terms": 62,
+  "top_dropped_words": {
+    "and": 32,
+    "the": 23,
+    "a": 14,
+    "to": 10,
+    "of": 10
+  }
+}

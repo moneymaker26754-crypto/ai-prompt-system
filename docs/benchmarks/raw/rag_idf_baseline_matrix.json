@@ -1,0 +1,58 @@
+{
+  "dense": [
+    {
+      "recall@5": 0.5738,
+      "mrr@5": 0.4211,
+      "hits@5": 53,
+      "queries": 79,
+      "latency_mean_ms": 51.62,
+      "latency_p50_ms": 44.83,
+      "latency_p95_ms": 53.66,
+      "latency_p99_ms": 127.76,
+      "recall@10": 0.673,
+      "mrr@10": 0.4339,
+      "run": 1
+    },
+    {
+      "recall@5": 0.5738,
+      "mrr@5": 0.4211,
+      "hits@5": 53,
+      "queries": 79,
+      "latency_mean_ms": 50.3,
+      "latency_p50_ms": 49.71,
+      "latency_p95_ms": 55.96,
+      "latency_p99_ms": 58.69,
+      "recall@10": 0.673,
+      "mrr@10": 0.4339,
+      "run": 2
+    }
+  ],
+  "hybrid_rrf": [
+    {
+      "recall@5": 0.5,
+      "mrr@5": 0.3677,
+      "hits@5": 47,
+      "queries": 79,
+      "latency_mean_ms": 49.48,
+      "latency_p50_ms": 48.97,
+      "latency_p95_ms": 56.29,
+      "latency_p99_ms": 57.64,
+      "recall@10": 0.6561,
+      "mrr@10": 0.3891,
+      "run": 1
+    },
+    {
+      "recall@5": 0.5,
+      "mrr@5": 0.3677,
+      "hits@5": 47,
+      "queries": 79,
+      "latency_mean_ms": 53.78,
+      "latency_p50_ms": 53.21,
+      "latency_p95_ms": 59.97,
+      "latency_p99_ms": 61.87,
+      "recall@10": 0.6561,
+      "mrr@10": 0.3891,
+      "run": 2
+    }
+  ]
+}
