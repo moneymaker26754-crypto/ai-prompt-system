@@ -1,0 +1,163 @@
+[
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.jojo.prompt.bench.MiniMqPublishBenchmark.publish",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\Lenovo\\.jdks\\openjdk-25.0.2\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "25.0.2",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25.0.2+10-69",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "3 s",
+        "measurementBatchSize" : 1,
+        "primaryMetric" : {
+            "score" : 1340.4791794143744,
+            "scoreError" : 160.6633815343802,
+            "scoreConfidence" : [
+                1179.815797879994,
+                1501.1425609487546
+            ],
+            "scorePercentiles" : {
+                "0.0" : 1288.6290561501426,
+                "50.0" : 1336.7123632506546,
+                "90.0" : 1393.8039814550643,
+                "95.0" : 1393.8039814550643,
+                "99.0" : 1393.8039814550643,
+                "99.9" : 1393.8039814550643,
+                "99.99" : 1393.8039814550643,
+                "99.999" : 1393.8039814550643,
+                "99.9999" : 1393.8039814550643,
+                "100.0" : 1393.8039814550643
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    1336.7123632506546,
+                    1288.6290561501426,
+                    1315.0291367573877,
+                    1368.2213594586233,
+                    1393.8039814550643
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.jojo.prompt.bench.RabbitMqPublishBenchmark.publish",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\Lenovo\\.jdks\\openjdk-25.0.2\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "25.0.2",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25.0.2+10-69",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "3 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "mode" : "fireAndForget"
+        },
+        "primaryMetric" : {
+            "score" : 18188.32168155212,
+            "scoreError" : 4161.995426681518,
+            "scoreConfidence" : [
+                14026.3262548706,
+                22350.317108233638
+            ],
+            "scorePercentiles" : {
+                "0.0" : 16819.32922520663,
+                "50.0" : 17948.19555123564,
+                "90.0" : 19788.647335151807,
+                "95.0" : 19788.647335151807,
+                "99.0" : 19788.647335151807,
+                "99.9" : 19788.647335151807,
+                "99.99" : 19788.647335151807,
+                "99.999" : 19788.647335151807,
+                "99.9999" : 19788.647335151807,
+                "100.0" : 19788.647335151807
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    17892.613484685207,
+                    16819.32922520663,
+                    17948.19555123564,
+                    18492.82281148131,
+                    19788.647335151807
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    },
+    {
+        "jmhVersion" : "1.37",
+        "benchmark" : "com.jojo.prompt.bench.RabbitMqPublishBenchmark.publish",
+        "mode" : "thrpt",
+        "threads" : 1,
+        "forks" : 1,
+        "jvm" : "C:\\Users\\Lenovo\\.jdks\\openjdk-25.0.2\\bin\\java.exe",
+        "jvmArgs" : [
+        ],
+        "jdkVersion" : "25.0.2",
+        "vmName" : "OpenJDK 64-Bit Server VM",
+        "vmVersion" : "25.0.2+10-69",
+        "warmupIterations" : 3,
+        "warmupTime" : "2 s",
+        "warmupBatchSize" : 1,
+        "measurementIterations" : 5,
+        "measurementTime" : "3 s",
+        "measurementBatchSize" : 1,
+        "params" : {
+            "mode" : "withPublisherConfirms"
+        },
+        "primaryMetric" : {
+            "score" : 734.0165099664985,
+            "scoreError" : 479.5272420468904,
+            "scoreConfidence" : [
+                254.48926791960804,
+                1213.543752013389
+            ],
+            "scorePercentiles" : {
+                "0.0" : 612.6499019460491,
+                "50.0" : 683.8951645315586,
+                "90.0" : 911.3919209040636,
+                "95.0" : 911.3919209040636,
+                "99.0" : 911.3919209040636,
+                "99.9" : 911.3919209040636,
+                "99.99" : 911.3919209040636,
+                "99.999" : 911.3919209040636,
+                "99.9999" : 911.3919209040636,
+                "100.0" : 911.3919209040636
+            },
+            "scoreUnit" : "ops/s",
+            "rawData" : [
+                [
+                    649.4908933025212,
+                    683.8951645315586,
+                    911.3919209040636,
+                    612.6499019460491,
+                    812.6546691483003
+                ]
+            ]
+        },
+        "secondaryMetrics" : {
+        }
+    }
+]
+
+
