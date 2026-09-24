@@ -75,7 +75,7 @@ flowchart LR
 ### 7. RAG 检索质量：三通道矩阵 + 审计修正
 - **S**：关键词通道 websearch_to_tsquery 为 AND 语义，79/79 查询恒为空，hybrid ≈ dense。
 - **T**：修正为词元 OR 语义 → 审计发现裸 OR 注入噪声（hybrid 0.500 vs dense 0.5738，**负结果如实记录**）→ 升级为 IDF 过滤低区分度词（ts_stat 语料统计 + ndoc≥60% 截断 + 最多 6 词）。
-- **A**：dense 基线 R@5=0.5738 / MRR@5=0.4211；+BGE 重排 R@5=0.6413（+11.8%，代价 CPU 重排延迟高）；EXACT vs HNSW 质量持平、P95 19.9ms vs 20.0ms；IDF 版结果见 `docs/benchmarks/rag-keyword-idf.md`。RAG 压测饱和点 ~69 TPS，瓶颈在本地嵌入推理（`docs/benchmarks/raw/p4_*.json`）。
+- **A**：dense 基线 R@5=0.5738 / MRR@5=0.4211；裸 OR hybrid=0.500（负结果）→ **IDF 过滤版 hybrid=0.5359（+7.2%，仍低于 dense -6.6%，如实记录）**；+BGE 重排 R@5=**0.6456**（代价 CPU ~14.4s/查询，线上不可用）；EXACT vs HNSW 质量持平、P95 ~20ms。查询行为分析：5/79 查询自动放弃关键词通道、被丢弃的正是 and/the/a/to/of。详见 `docs/benchmarks/rag-keyword-idf.md`。RAG 压测饱和点 ~69 TPS，瓶颈在本地嵌入推理。
 
 ### 8. 企业级工程底座
 - 多模块 Maven + Docker Compose 全家桶 + OTel/Prometheus/Grafana/Tempo 可观测 + 统一异常/参数校验 + JWT 无状态认证 + 版本号乐观锁 + 幂等 confirm + 行为日志/通知异步解耦。
@@ -88,7 +88,7 @@ flowchart LR
 | mini-MQ vs RabbitMQ | confirms 路径 1.83×；fire-and-forget 13.6×（fsync 差异） | `docs/benchmarks/mq-comparison.md` |
 | 计数 A/B 全链路 | 20/50 并发 redis-mq vs direct-db | `docs/benchmarks/report-2026-08-rag-counting.md` |
 | 并发拐点实验 | view 峰值 230 TPS@100u，400u 塌陷；瓶颈=连接池饱和 | `docs/benchmarks/kneepoint-report.md` |
-| RAG 检索矩阵 | dense R@5=0.5738；+rerank 0.6413；chunk 消融 256→1600 | 同上 + `rag-keyword-idf.md` |
+| RAG 检索矩阵 | dense R@5=0.5738；IDF-hybrid 0.5359（+7.2%）；+rerank 0.6456；chunk 消融 256→1600 | `docs/benchmarks/rag-keyword-idf.md` + `report-2026-08-rag-counting.md` |
 | RAG 压测 | TPS 饱和 ~69（嵌入瓶颈） | `docs/benchmarks/raw/p4_*.json` |
 
 所有数据可复现：JMH 命令见各报告；原始 JSON/CSV 在 `docs/benchmarks/raw/`。
