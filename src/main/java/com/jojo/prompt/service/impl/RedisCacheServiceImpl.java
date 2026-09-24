@@ -7,6 +7,7 @@ import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
@@ -32,6 +33,14 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     private final DefaultRedisScript<Long> unlockScript;
     //消息队列
     private final PromptMqProducer promptMqProducer;
+
+    //A/B 开关（benchmark 用，未提交）：direct-db 时计数直写 DB，跳过 Redis INCR/ZSet 与 MQ 合并写
+    @Value("${prompt.count.mode:redis-mq}")
+    private String countMode;
+
+    private boolean directDb() {
+        return "direct-db".equals(countMode);
+    }
 
     @Override
     public void cachePromptDetail(Long promptId, PromptVO promptVO) {
@@ -64,6 +73,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long incrementViewCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 1, 0, 0, 0);
+            return null;
+        }
         String key = PROMPT_VIEW_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -74,6 +87,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long incrementLikeCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 0, 1, 0, 0);
+            return null;
+        }
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -84,6 +101,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long incrementFavoriteCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 0, 0, 1, 0);
+            return null;
+        }
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -94,6 +115,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long incrementCopyCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 0, 0, 0, 1);
+            return null;
+        }
         String key = PROMPT_COPY_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -104,6 +129,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long decrementLikeCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 0, -1, 0, 0);
+            return null;
+        }
         String key = PROMPT_LIKE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -114,6 +143,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public Long decrementFavoriteCount(Long promptId) {
+        if (directDb()) {
+            promptMapper.incrementCounts(promptId, 0, 0, -1, 0);
+            return null;
+        }
         String key = PROMPT_FAVORITE_COUNT + promptId;
         Long count = stringRedisTemplate.opsForValue().increment(key, -1);
         stringRedisTemplate.expire(key, jitter(CACHE_EXPIRE_1DAY), TimeUnit.SECONDS);
@@ -319,6 +352,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public boolean isUserLiked(Long userId, Long promptId) {
+        if (directDb()) {
+            return false;
+        }
         String key = USER_LIKE_SET + userId;
         return Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(key, promptId.toString()));
     }
@@ -338,6 +374,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public boolean isUserFavorite(Long userId, Long promptId) {
+        if (directDb()) {
+            return false;
+        }
         String key = USER_FAVORITE_SET + userId;
         return Boolean.TRUE.equals(stringRedisTemplate.opsForSet().isMember(key, promptId.toString()));
     }
@@ -380,6 +419,9 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public boolean tryRecordCopyCount(String identifier, Long promptId, long windowSeconds) {
+        if (directDb()) {
+            return true;
+        }
         String key = COPY_DEDUP +  identifier + ":" + promptId;
         Boolean isSuccess = stringRedisTemplate.opsForValue()
                 .setIfAbsent(key, "1", windowSeconds, TimeUnit.SECONDS);
