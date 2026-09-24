@@ -1,6 +1,6 @@
 # AI Prompt System
 
-一个工程化程度接近企业级的 **Prompt 管理与 AI 优化平台后端**：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务（RAG/优化/流式），含自研消息中间件与两个自研 Spring Boot Starter，全部核心路径有基准数据支撑。
+ **Prompt 管理与 AI 优化平台后端**：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务（RAG/优化/流式），含自研消息中间件与两个自研 Spring Boot Starter，全部核心路径有基准数据支撑。
 
 ```mermaid
 flowchart LR
