@@ -19,8 +19,10 @@
 ## Todo Map
 
 - [x] P0 基线修复 + 3 commit（d27e04e/776b57a/6144f0a）+ .gitignore pycache
-- [ ] P1 infra-starter（T1.1–T1.6）
-- [ ] P2 主项目接入 + 根 pom 多模块化（T2.1–T2.6）
+- [x] T2.1 多模块骨架（commit 6bc0c59；git 保留 rename 历史）
+- [x] P1 infra-starter（T1.1–T1.6，commit e9dc350；21 个集成测试打真实 Redis 全绿）
+- [x] P2 主项目接入（commit 5542917：限流委托/计数锁替换/confirm 幂等/布隆+互斥重建/copy @RateLimit/异常处理 + 3 个缓存三防切片测试；app 全绿）
+- [~] P3 mini-mq 模块（subagent 3296e05e 后台开发中；骨架 pom 已注册 commit f938a7f）
 - [ ] P3 mini-mq 模块（T3.1–T3.5，计划走 subagent_fork）
 - [ ] P4 mini-mq-spring-boot-starter（T4.1–T4.2）
 - [ ] P5 主项目接入 mini-MQ 非关键链路（T5.1–T5.2）
@@ -29,15 +31,21 @@
 
 ## Current Checkpoint
 
-- 活跃切片：P1（T1.1 起）。
-- 下一步最小动作：根 pom 多模块骨架（先做 T2.1 的 aggregator 结构以便新模块有位可放，再做 T1.1）——顺序微调：**先 T2.1 多模块骨架 → 再 T1.1**。理由：新模块需要根 aggregator 才能纳入单次构建验证。
-- 分支/HEAD：master @ 6144f0a。
-- 阻塞：无。风险：本机 Docker/MySQL/Redis 可用性待 P6 前探测。
+- 活跃切片：P3（子代理开发中）+ 主线等待其汇报后进入 P4/P6。
+- P2 完成：`-pl app -am test` 全绿（18 测试类含新增 PromptQueryServiceImplTest）。
+- 分支/HEAD：master @ f938a7f。
+- 阻塞：无。
+- 经验教训（重要，已记入代码）：根 pom pluginManagement 的 maven-compiler-plugin 配置里加 `<parameters>` 会破坏与 spring-boot-parent 的配置合并、导致 Lombok 注解处理器失效——参数名功能本就由 `maven.compiler.parameters` 提供，勿再在 plugin 配置里重复声明。
+- 设计决策记录（供 resume/README 引用）：
+  - confirm 幂等用 SETNX 占位即可串行化并发，因此不再叠加 RedisLock（避免冗余，AGENTS 简化原则）；
+  - starter 不依赖 servlet/security：IP/USER 维度走 RequestDimension SPI，app 侧实现；
+  - 布隆预热（ApplicationReadyEvent）防冷启动误 404，未预热时查询链路 fail-open；
+  - 互斥重建采用「锁 + 二次读缓存」单飞模式，竞争者未抢到锁时直连 DB（允许极端竞争下多一次 DB 读，换取实现简单）。
 
 ## Evidence Trail
 
-- P0 证据：surefire XML（12:09/12:11 两次运行全绿）、pytest `122 passed`、`git log --oneline -4`。
-- 未验证项：无编造数据；所有性能数字须来自 P6 脚本输出。
+- P1 证据：infra-starter 21 测试全绿（lock 7 / rate-limit 4 / idempotent 3 / bloom 7；本机 Redis 6379）。
+- 环境事实：本机 Docker 容器全在（mysql8/my-redis/rabbitmq），Redis/MySQL/RabbitMQ 端口可用 → P6 压测可做真实中间件对比。
 
 ## Resume Hint
 
