@@ -112,7 +112,7 @@ cd ai-service && .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 
 | 模块 | 测试 | 状态 |
 |---|---|---|
-| app | 18 测试类（含缓存三防切片、MQ 降级、AI 网关） | `./mvnw -pl app -am test` 全绿 |
+| app | 17 测试类（含缓存三防切片、MQ 降级、AI 网关） | `./mvnw -pl app -am test` 全绿 |
 | infra-starter | 20 个集成测试打真实 Redis（锁 7/限流 4/幂等 3/布隆 6） | 全绿 |
 | mini-mq | 14（存储 6/语义 7/端到端 1） | 全绿 |
 | mini-mq-spring-boot-starter | 1 端到端（真 broker 发布→@MiniMqListener 消费） | 全绿 |
