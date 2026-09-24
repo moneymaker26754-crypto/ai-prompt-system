@@ -23,11 +23,4 @@ public class RedisLuaConfig {
         script.setResultType(List.class);
         return script;
     }
-    @Bean("unlockScript")
-    public DefaultRedisScript<Long> unlockScript() {
-        DefaultRedisScript<Long> script = new DefaultRedisScript<>();
-        script.setLocation(new ClassPathResource("lua/unlock.lua"));
-        script.setResultType(Long.class);
-        return script;
-    }
 }

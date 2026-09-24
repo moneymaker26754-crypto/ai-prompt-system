@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.jojo.prompt.common.constant.PromptStatus;
 import com.jojo.prompt.common.constant.PromptVisibility;
+import com.jojo.prompt.common.config.PromptBloomWarmer;
 import com.jojo.prompt.common.event.PromptHeatEvent;
 import com.jojo.prompt.common.exception.BusinessException;
 import com.jojo.prompt.common.result.PageResult;
@@ -14,6 +15,8 @@ import com.jojo.prompt.dto.request.PromptQueryDTO;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Category;
 import com.jojo.prompt.entity.Prompt;
+import com.jojo.prompt.infra.bloom.RedisBloomFilter;
+import com.jojo.prompt.infra.lock.RedisLockClient;
 import com.jojo.prompt.mapper.CategoryMapper;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.*;
@@ -50,6 +53,10 @@ public class PromptQueryServiceImpl implements PromptQueryService {
     private final PromptPermissionService promptPermissionService;
     //事件监视器
     private final ApplicationEventPublisher eventPublisher;
+    //基础设施：互斥重建锁 / Prompt ID 布隆过滤器（防击穿/穿透）
+    private final RedisLockClient redisLockClient;
+    private final RedisBloomFilter promptIdBloomFilter;
+    private final PromptBloomWarmer promptBloomWarmer;
 
 
     //2.0引入redis，应对缓存穿透和雪崩，缓存读写分离做降级策略
@@ -70,36 +77,27 @@ public class PromptQueryServiceImpl implements PromptQueryService {
                 () -> redisCacheService.getPromptDetailCache(id), null);
 //        PromptVO cacheVO = redisCacheService.getPromptDetailCache(id);
         if (cacheVO != null) {
-            //命中缓存拷贝对象，防止污染缓存
-            PromptVO result = BeanUtil.copyProperties(cacheVO, PromptVO.class);
-            //非本人查询才计数viewCount
-            boolean owner = currentUserId != null && currentUserId.equals(result.getUserId());
-            if (!owner) {
-//                redisCacheService.incrementViewCount(id);
-                redisWrite("view-count-increment", () -> redisCacheService.incrementViewCount(id));
+            return buildCacheHitResult(cacheVO, id, currentUserId);
+        }
+        //缓存未命中：互斥重建——同一 key 同时刻只有一个线程回源 DB，其余竞争者二次读缓存
+        String rebuildLockKey = PROMPT_CACHE_REBUILD_LOCK + id;
+        PromptVO secondCheck = null;
+        if (redisLockClient.tryLock(rebuildLockKey, 5_000)) {
+            try {
+                secondCheck = redisRead("prompt-detail-get-2nd",
+                        () -> redisCacheService.getPromptDetailCache(id), null);
+            } finally {
+                redisLockClient.unlock(rebuildLockKey);
             }
-            //无论是否owner，都merge实时计数
-            promptInteractionAssembler.mergeRedisCountsToVO(result, id);
-            //设置补充当前用户的点赞/收藏状态
-            if (currentUserId != null) {
-                result.setIsLike(promptLikeService.isLiked(id, currentUserId));
-                result.setIsFavorite(promptFavoriteService.isFavoritePrompt(id, currentUserId));
-            } else {
-                result.setIsLike(false);
-                result.setIsFavorite(false);
-            }
-            //事件发布，更新热度
-            String action = "view";
-            eventPublisher.publishEvent(
-                    new PromptHeatEvent(
-                            id,
-                            currentUserId,
-                            action,
-                            LocalDateTime.now()
-                    )
-            );
-
-            return result;
+        }
+        if (secondCheck != null) {
+            return buildCacheHitResult(secondCheck, id, currentUserId);
+        }
+        //布隆拦截：无假阴性，判「不存在」可直接 404，跳过无效 DB 查询（预热完成前 fail-open）
+        if (promptBloomWarmer.isWarmed()
+                && redisRead("prompt-bloom-check",
+                () -> !promptIdBloomFilter.mightContain(String.valueOf(id)), false)) {
+            throw new BusinessException(404, "prompt not exist");
         }
         //缓存未命中，查数据库
         Prompt prompt = promptMapper.selectById(id);
@@ -139,6 +137,32 @@ public class PromptQueryServiceImpl implements PromptQueryService {
         }
 
         return vo;
+    }
+
+    //缓存命中路径：拷贝防污染 + 计数 + 点赞收藏状态 + 热度事件（命中缓存与二次检查共用）
+    private PromptVO buildCacheHitResult(PromptVO cacheVO, Long id, Long currentUserId) {
+        //命中缓存拷贝对象，防止污染缓存
+        PromptVO result = BeanUtil.copyProperties(cacheVO, PromptVO.class);
+        //非本人查询才计数viewCount
+        boolean owner = currentUserId != null && currentUserId.equals(result.getUserId());
+        if (!owner) {
+            redisWrite("view-count-increment", () -> redisCacheService.incrementViewCount(id));
+        }
+        //无论是否owner，都merge实时计数
+        promptInteractionAssembler.mergeRedisCountsToVO(result, id);
+        //设置补充当前用户的点赞/收藏状态
+        if (currentUserId != null) {
+            result.setIsLike(promptLikeService.isLiked(id, currentUserId));
+            result.setIsFavorite(promptFavoriteService.isFavoritePrompt(id, currentUserId));
+        } else {
+            result.setIsLike(false);
+            result.setIsFavorite(false);
+        }
+        //事件发布，更新热度
+        eventPublisher.publishEvent(
+                new PromptHeatEvent(id, currentUserId, "view", LocalDateTime.now())
+        );
+        return result;
     }
 
     @Override

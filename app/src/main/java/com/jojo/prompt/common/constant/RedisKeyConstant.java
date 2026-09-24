@@ -74,4 +74,6 @@ public interface RedisKeyConstant {
     String PROMPT_COUNT_DIRTY_SET = "prompt:count:dirty:";
     //redis锁常量
     String PROMPT_COUNT_SYNC_LOCK = "prompt:count:sync:lock:";
+    //详情缓存互斥重建锁（防缓存击穿）
+    String PROMPT_CACHE_REBUILD_LOCK = "prompt:cache:rebuild:";
 }

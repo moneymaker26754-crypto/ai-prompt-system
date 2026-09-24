@@ -18,8 +18,8 @@
     <modules>
         <module>app</module>
         <module>infra-starter</module>
+        <module>mini-mq</module>
         <!-- 以下模块随各自骨架创建后加入 -->
-        <!--<module>mini-mq</module>-->
         <!--<module>mini-mq-spring-boot-starter</module>-->
     </modules>
 
@@ -88,7 +88,6 @@
                             </path>
                         </annotationProcessorPaths>
                         <release>${java.version}</release>
-                        <parameters>true</parameters>
                     </configuration>
                 </plugin>
             </plugins>

@@ -1,6 +1,8 @@
 package com.jojo.prompt.common.exception;
 
 import com.jojo.prompt.common.result.Result;
+import com.jojo.prompt.infra.idempotent.IdempotentConflictException;
+import com.jojo.prompt.infra.ratelimit.RateLimitExceededException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -74,6 +76,18 @@ public class GlobalExceptionHandler {
     public Result<Void> handleNoResourceFoundException(NoResourceFoundException e) {
         log.debug("resource not found, path={}", e.getResourcePath());
         return Result.error(404, "resource not found");
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    public Result<Void> handleRateLimitExceeded(RateLimitExceededException e) {
+        log.warn("rate limit exceeded, status=too_many_requests, message={}", e.getMessage());
+        return Result.error(429, e.getMessage());
+    }
+
+    @ExceptionHandler(IdempotentConflictException.class)
+    public Result<Void> handleIdempotentConflict(IdempotentConflictException e) {
+        log.warn("idempotent conflict, status=conflict, message={}", e.getMessage());
+        return Result.error(409, e.getMessage());
     }
 
     @ExceptionHandler(Exception.class)

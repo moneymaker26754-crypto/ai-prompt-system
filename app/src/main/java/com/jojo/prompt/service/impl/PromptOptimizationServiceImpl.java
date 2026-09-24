@@ -13,6 +13,7 @@ import com.jojo.prompt.dto.response.PromptOptimizeReviewResult;
 import com.jojo.prompt.dto.response.PromptOptimizeVO;
 import com.jojo.prompt.entity.PromptOptimizationRecord;
 import com.jojo.prompt.entity.PromptTemplate;
+import com.jojo.prompt.infra.idempotent.Idempotent;
 import com.jojo.prompt.integration.ai.PromptAiGateway;
 import com.jojo.prompt.integration.ai.PromptAnalyzeResult;
 import com.jojo.prompt.integration.ai.PromptOptimizeResult;
@@ -123,6 +124,9 @@ public class PromptOptimizationServiceImpl implements PromptOptimizationService 
     }
 
     @Override
+    //幂等：同一用户对同一优化记录的重复确认直接拦截（防重复创建 Prompt）
+    @Idempotent(key = "optimization-confirm",
+            expr = "#dto.recordId + ':' + @promptPermissionService.requireCurrentUserId()")
     public Long confirmAsPrompt(PromptOptimizeConfirmDTO dto) {
         Long userId = promptPermissionService.requireCurrentUserId();
 

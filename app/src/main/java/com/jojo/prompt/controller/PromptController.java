@@ -7,6 +7,7 @@ import com.jojo.prompt.dto.request.PromptQueryDTO;
 import com.jojo.prompt.dto.request.PromptUpdateDTO;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Prompt;
+import com.jojo.prompt.infra.ratelimit.RateLimit;
 import com.jojo.prompt.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -112,6 +113,8 @@ public class PromptController {
 
     //1.5新增
     @Operation(summary = "复制提示词", description = "记录复制的提示词并返回内容")
+    @RateLimit(limit = 30, windowSeconds = 60, key = "prompt-copy", dim = RateLimit.Dimension.USER,
+            message = "copy too frequent, please try again later")
     @PostMapping("{id}/copy")
     public Result<String> copyPrompt(@Parameter(description = "提示词ID") @PathVariable Long id, HttpServletRequest request) {
         String context = promptCommandService.copyPrompt(id, request);

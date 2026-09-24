@@ -8,7 +8,9 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.context.expression.BeanFactoryResolver;
 import org.springframework.core.DefaultParameterNameDiscoverer;
 import org.springframework.core.ParameterNameDiscoverer;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -35,17 +37,20 @@ public class IdempotentAspect {
     private final PromptInfraProperties properties;
     private final InfraMetrics metrics;
     private final ObjectProvider<RequestDimension> dimensionProvider;
+    private final BeanFactory beanFactory;
     private final ExpressionParser spelParser = new SpelExpressionParser();
     private final ParameterNameDiscoverer nameDiscoverer = new DefaultParameterNameDiscoverer();
 
     public IdempotentAspect(StringRedisTemplate stringRedisTemplate,
                             PromptInfraProperties properties,
                             InfraMetrics metrics,
-                            ObjectProvider<RequestDimension> dimensionProvider) {
+                            ObjectProvider<RequestDimension> dimensionProvider,
+                            BeanFactory beanFactory) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.properties = properties;
         this.metrics = metrics;
         this.dimensionProvider = dimensionProvider;
+        this.beanFactory = beanFactory;
     }
 
     @Around("@annotation(idempotent)")
@@ -99,6 +104,9 @@ public class IdempotentAspect {
     private String resolveExpr(ProceedingJoinPoint joinPoint, String expr) {
         Method method = ((MethodSignature) joinPoint.getSignature()).getMethod();
         StandardEvaluationContext context = new StandardEvaluationContext();
+        if (beanFactory != null) {
+            context.setBeanResolver(new BeanFactoryResolver(beanFactory));
+        }
         String[] paramNames = nameDiscoverer.getParameterNames(method);
         Object[] args = joinPoint.getArgs();
         if (paramNames != null) {

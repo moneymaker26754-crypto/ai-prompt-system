@@ -53,10 +53,7 @@ public interface RedisCacheService {
     List<Category> getCategoryListCache();
     void deleteCategoryCache();
 
-    //分布式锁，用lua脚本实现锁释放
-    Boolean tryLock(String lockKey, String requestId, long expireTime);
-
-    //限流相关
+    //限流相关（实现已升级为 starter 滑动窗口）
     boolean trySearchAllowed(String identifier, long limit, long windowSeconds);
 
     boolean tryRecordCopyCount(String identifier, Long promptId, long windowSeconds);

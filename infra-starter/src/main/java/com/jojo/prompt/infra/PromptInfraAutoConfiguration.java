@@ -123,8 +123,9 @@ public class PromptInfraAutoConfiguration {
             StringRedisTemplate stringRedisTemplate,
             PromptInfraProperties properties,
             InfraMetrics infraMetrics,
-            ObjectProvider<com.jojo.prompt.infra.dimension.RequestDimension> dimensionProvider) {
-        return new IdempotentAspect(stringRedisTemplate, properties, infraMetrics, dimensionProvider);
+            ObjectProvider<com.jojo.prompt.infra.dimension.RequestDimension> dimensionProvider,
+            org.springframework.beans.factory.BeanFactory beanFactory) {
+        return new IdempotentAspect(stringRedisTemplate, properties, infraMetrics, dimensionProvider, beanFactory);
     }
 
     @Bean

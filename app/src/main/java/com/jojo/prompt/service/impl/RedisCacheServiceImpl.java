@@ -3,6 +3,8 @@ package com.jojo.prompt.service.impl;
 import com.jojo.prompt.common.mq.producer.PromptMqProducer;
 import com.jojo.prompt.dto.response.PromptVO;
 import com.jojo.prompt.entity.Category;
+import com.jojo.prompt.infra.lock.RedisLockClient;
+import com.jojo.prompt.infra.ratelimit.SlidingWindowRateLimiter;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.RedisCacheService;
 import lombok.RequiredArgsConstructor;
@@ -30,9 +32,11 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     private final PromptMapper promptMapper;
     private final DefaultRedisScript<List> countSnapshotScript;
     private final DefaultRedisScript<List> countDeductScript;
-    private final DefaultRedisScript<Long> unlockScript;
     //消息队列
     private final PromptMqProducer promptMqProducer;
+    //基础设施 Starter：分布式锁 / 滑动窗口限流
+    private final RedisLockClient redisLockClient;
+    private final SlidingWindowRateLimiter slidingWindowRateLimiter;
 
     //A/B 开关（benchmark 用，未提交）：direct-db 时计数直写 DB，跳过 Redis INCR/ZSet 与 MQ 合并写
     @Value("${prompt.count.mode:redis-mq}")
@@ -177,10 +181,8 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     @Override
     public boolean syncCountToDb(Long promptId) {
         String lockKey = PROMPT_COUNT_SYNC_LOCK + promptId;
-        //用uuid做幂等操作，保证只同步一次
-        String uuid = UUID.randomUUID().toString();
-        Boolean locked = tryLock(lockKey, uuid, 30);
-        if(!Boolean.TRUE.equals(locked)) {
+        //可重入分布式锁（starter）：Lua 校验 token 释放 + watchDog 续期，替代原 setIfAbsent+uuid 方案
+        if (!redisLockClient.tryLock(lockKey)) {
             return false;
         }
 
@@ -204,7 +206,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
             deductLiveCounts(promptId, deltas);
             return true;
         } finally {
-            stringRedisTemplate.execute(unlockScript, List.of(lockKey), uuid);
+            redisLockClient.unlock(lockKey);
         }
     }
     //用lua脚本获取当前liveKEY的值
@@ -396,25 +398,10 @@ public class RedisCacheServiceImpl implements RedisCacheService {
     public void deleteCategoryCache() {
         redisTemplate.delete(CATEGORY_LIST);
     }
-    //分布式锁的获取和释放
-    @Override
-    public Boolean tryLock(String lockKey, String requestId, long expireTime) {
-        return stringRedisTemplate.opsForValue().setIfAbsent(lockKey, requestId, expireTime, TimeUnit.SECONDS);
-
-    }
-
-    //限流相关业务实现
+    //限流相关业务实现（升级为 starter 的滑动窗口实现：ZSET + Lua 原子判定，替代固定窗口 INCR+EXPIRE）
     @Override
     public boolean trySearchAllowed(String identifier, long limit, long windowSeconds) {
-        String key = RATE_LIMIT_SEARCH + identifier;
-        Long count = stringRedisTemplate.opsForValue().increment(key);
-        if(count == null) {
-            return false;
-        }
-        if(count == 1L) {
-            stringRedisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
-        }
-        return count <= limit;
+        return slidingWindowRateLimiter.tryAcquire(RATE_LIMIT_SEARCH + identifier, limit, windowSeconds);
     }
 
     @Override
@@ -431,15 +418,7 @@ public class RedisCacheServiceImpl implements RedisCacheService {
 
     @Override
     public boolean tryLoginAllowed(String ipIdentifier, long limit, long windowSeconds) {
-        String key = RATE_LIMIT_LOGIN_IP + ipIdentifier;
-        Long count = stringRedisTemplate.opsForValue().increment(key);
-        if(count == null) {
-            return false;
-        }
-        if(count == 1L) {
-            stringRedisTemplate.expire(key, windowSeconds, TimeUnit.SECONDS);
-        }
-        return count <= limit;
+        return slidingWindowRateLimiter.tryAcquire(RATE_LIMIT_LOGIN_IP + ipIdentifier, limit, windowSeconds);
     }
 
     @Override

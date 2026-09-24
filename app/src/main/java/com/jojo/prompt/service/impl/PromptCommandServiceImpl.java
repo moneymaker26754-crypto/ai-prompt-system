@@ -13,6 +13,7 @@ import com.jojo.prompt.common.utils.RequestIdentityUtil;
 import com.jojo.prompt.dto.request.PromptCreateDTO;
 import com.jojo.prompt.dto.request.PromptUpdateDTO;
 import com.jojo.prompt.entity.Prompt;
+import com.jojo.prompt.infra.bloom.RedisBloomFilter;
 import com.jojo.prompt.mapper.PromptMapper;
 import com.jojo.prompt.service.PromptCommandService;
 import com.jojo.prompt.service.RedisCacheService;
@@ -42,6 +43,8 @@ public class PromptCommandServiceImpl implements PromptCommandService {
     private final ApplicationEventPublisher eventPublisher;
     //消息队列
     private final PromptMqProducer promptMqProducer;
+    //Prompt ID 布隆过滤器（创建时实时写入，配合查询链路防穿透）
+    private final RedisBloomFilter promptIdBloomFilter;
 
 
     @Override
@@ -62,6 +65,8 @@ public class PromptCommandServiceImpl implements PromptCommandService {
 
         //写入数据库
         promptMapper.insert(prompt);
+        //布隆过滤器实时写入（add 幂等，与预热并发安全；写失败不阻塞主流程，查询链路 fail-open）
+        redisWriteBloom(prompt.getId());
         //发布消息
         eventPublisher.publishEvent(new PromptCreateEvent(
                 prompt.getId(),
@@ -214,6 +219,14 @@ public class PromptCommandServiceImpl implements PromptCommandService {
         if (!success) {
             log.error("prompt review message send failed after commit, promptId={}, expectedVersion={}, action={}",
                     message.promptId(), message.expectedVersion(), message.operationType());
+        }
+    }
+
+    private void redisWriteBloom(Long promptId) {
+        try {
+            promptIdBloomFilter.add(String.valueOf(promptId));
+        } catch (Exception ex) {
+            log.warn("prompt id bloom add failed, promptId={}, ignored (fail-open)", promptId, ex);
         }
     }
 
