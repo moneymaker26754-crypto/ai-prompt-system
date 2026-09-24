@@ -1,6 +1,34 @@
 # AI Prompt System
 
- **Prompt 管理与 AI 优化平台后端**：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务（RAG/优化/流式），含自研消息中间件与两个自研 Spring Boot Starter，全部核心路径有基准数据支撑。
+一个 Prompt 管理与 AI 优化平台的后端系统：`Spring Boot 3 + Java 21` 主服务 + `FastAPI` AI 服务，覆盖 Prompt 的创建、审核、互动计数、热度排行与 AI 分析优化工作流，并沉淀了一套可复用的基础设施组件。
+
+## 项目面向谁
+
+- **学习后端工程化的开发者**：在一个真实业务闭环里看到鉴权、事务、缓存、消息队列、限流、可观测等能力的落地方式与取舍；
+- **对 AI 应用感兴趣的同学**：了解「LLM 调用 + RAG 检索 + 工作流编排」如何与业务系统结合；
+- **想练手中间件/组件开发的人**：仓库内的 mini-mq 与 starter 模块是完整的最小实现，可直接阅读、改造、对比。
+
+## 项目包含什么
+
+### 业务能力
+
+- 用户注册、登录、JWT 鉴权、个人资料维护
+- Prompt 创建（先审核后发布）、更新（版本号防并发覆盖）、删除、详情、分页检索（全文/分类/标签）
+- 点赞、收藏、复制、浏览计数与各类热度排行榜
+- 搜索历史与热门搜索词
+- 发布审核链：敏感词 / 质量 / 原创性（责任链模式，经 RabbitMQ 异步执行）
+- AI 优化工作流：分析 → 优化 → 复核，支持 SSE 流式输出，优化结果可确认保存为正式 Prompt
+- RAG 问答：混合检索（稠密 + 关键词 + RRF 融合 + 重排）与带引用生成
+
+### 基础设施与自研组件
+
+- `prompt-infra-spring-boot-starter`：可重入分布式锁、滑动窗口限流、幂等注解、布隆过滤器（Redis + Lua 实现）
+- `mini-mq`：自研消息中间件核心（分段 append-only 存储、消费组游标、ack/重试/死信、延迟消息、Netty 私有协议）
+- `mini-mq-spring-boot-starter`：mini-mq 的 Spring Boot 自动装配（模板、`@MiniMqListener` 注解、健康检查）
+- 可观测：OpenTelemetry 链路追踪 + Prometheus 指标 + Grafana 面板
+- 压测与基准：JMH 基准模块与压测脚本，实验记录见 `docs/benchmarks/`
+
+## 架构
 
 ```mermaid
 flowchart LR
@@ -28,98 +56,51 @@ flowchart LR
     MMQ -->|渐进替换| RABBIT
 ```
 
-## 仓库结构（Maven 多模块 + Python 服务）
+### 模块划分
 
-| 模块 | 定位 |
+| 模块 | 职责 |
 |---|---|
-| `app/` | 主服务：用户/JWT、Prompt CRUD 与版本控制、审核责任链、Redis 计数/热度、AI 优化工作流（经 Python 网关）、SSE 流式 |
-| `ai-service/` | AI 服务（FastAPI）：混合检索 RAG（dense+keyword+RRF+重排）、分析/优化/复核 Agent、流式输出、评测服务 |
-| `infra-starter/` | **自研基础设施 Starter**：可重入分布式锁 / 滑动窗口限流 / 幂等 / 布隆过滤器（Redis+Lua，主项目 dogfooding） |
-| `mini-mq/` | **自研消息中间件核心**：分段 append-only 存储、消费组游标、ack/重试/死信、延迟消息、Netty 私有协议 |
-| `mini-mq-spring-boot-starter/` | **自研 mini-mq 的 Starter**：MiniMqTemplate + @MiniMqListener + 健康检查 |
-| `benchmarks/` | JMH 微基准套件（全部性能数据可一键复现） |
+| `app/` | 主服务：用户/JWT、Prompt 业务、审核责任链、Redis 计数与热度、AI 优化工作流（经 Python 网关）、SSE 流式 |
+| `ai-service/` | AI 服务（FastAPI）：混合检索 RAG、分析/优化/复核 Agent、流式输出 |
+| `infra-starter/` | 基础设施 Starter：分布式锁 / 滑动窗口限流 / 幂等 / 布隆过滤器 |
+| `mini-mq/` | 自研消息中间件核心（存储、消费语义、Netty 网络层） |
+| `mini-mq-spring-boot-starter/` | mini-mq 的 Spring Boot 自动装配 |
+| `benchmarks/` | JMH 基准套件 |
 | `docs/benchmarks/` | 基准报告与原始数据 |
 
-## 简历亮点清单（STAR：问题 → 方案 → 数据）
+### 关键设计
 
-### 1. 互动计数链路：Redis 异步合并，直写 DB 的 ~5 倍吞吐
-- **S（问题）**：点赞/收藏/浏览/复制是高频写；直写 DB 单行 UPDATE 实测仅 **180.6 ops/s**（JMH），且热点行行锁冲突。
-- **T（方案）**：计数先写 Redis（INCR/ZINCRBY），脏集标记 + RabbitMQ 延迟队列合并回刷（dispatchKey 防重 + Lua 快照扣减 + 分布式锁串行化），TTL 加 jitter 防雪崩。
-- **A（数据）**：Redis INCR **914.4 ops/s（≈5.1×）**；全链路 A/B（20/50 并发）redis-mq 模式 TPS 显著优于 direct-db 且 DB 写入次数大幅下降（原始数据 `docs/benchmarks/raw/ab_*.json`）；并发拐点实验：view 峰值 **229.7 TPS @100 并发**、400 并发塌陷至 116 TPS，采样证据定位瓶颈为 Lettuce(8)/Druid(20) 连接池饱和（`docs/benchmarks/kneepoint-report.md`）。
+- **审核异步化**：创建/更新事务提交后投递 RabbitMQ，责任链消费审核，杜绝消息与数据状态不一致
+- **计数合并写**：互动计数先落 Redis，经延迟队列合并回刷 MySQL，降低热点行写压力
+- **缓存防护**：布隆过滤器防穿透、互斥重建防击穿、TTL jitter 防雪崩，热点详情另有本地一级缓存
+- **幂等与并发控制**：confirm 保存幂等、更新版本号乐观锁、计数同步分布式锁串行化
+- **渐进式消息改造**：行为日志/通知链路可通过开关在进程内与 mini-mq 间切换，RabbitMQ 主链路保持不变
 
-### 2. 自研分布式锁（infra-starter）：20 线程竞争恰好互斥
-- **S**：计数同步、缓存重建等路径原用 setIfAbsent+uuid，无重入、无续期，长任务锁过期即并发。
-- **T**：Hash+计数可重入（HINCRBY）、Lua 释放校验 token 防误删、WatchDog 以 lease/3 间隔续租、Micrometer 指标。
-- **A**：集成测试 20 线程持锁竞争全部失败（互斥）；WatchDog 实测 300ms 租约存活超 1s；JMH 无竞争 361 对/s、4 线程竞争组 2167/s。
+## 技术栈
 
-### 3. 限流升级：滑动窗口替代固定窗口，-20% 吞吐换窗口精确
-- **S**：固定窗口 INCR+EXPIRE 在窗口边界可被 2× 突刺穿过。
-- **T**：`@RateLimit` 注解 + ZSET 滑动窗口单条 Lua 原子判定（ZREMRANGEBYSCORE+ZCARD+ZADD），维度支持 IP/用户/SpEL；Redis 故障 fail-open。
-- **A**：JMH 滑动窗口 **728.5 vs 固定 914.4 ops/s（-20%）**；50 并发突刺测试恰好放行 limit 个（Lua 原子性验证）。登录/搜索限流已切换，复制接口新增注解限流。
+`Java 21` · `Spring Boot 3.5` · `Spring Security` · `MyBatis-Plus` · `MySQL 8` · `Redis 7` · `RabbitMQ` · `Netty` · `JMH` · `Python 3` · `FastAPI` · `LangChain` · `pgvector` · `Ollama`
 
-### 4. 缓存三防 + 两级缓存：布隆 + 互斥重建 + L1 本地缓存
-- **S**：查询不存在的 ID 每次落 DB；热点详情缓存失效瞬间并发击穿；拐点实验进一步定位——即使命中 Redis 缓存，每次仍走 4 次 Redis RTT（Lettuce 池 8 在 100+ 并发先饱和）。
-- **T**：自研 Redis bitmap 布隆（m/k 按 n 与误判率推导，双哈希派生，pipeline k 次位操作合并 1 RTT）+ 预热（防冷启动误 404）+ 互斥重建单飞 + 空值缓存/jitter；另加 **Caffeine L1 本地缓存**（500 条/60s TTL/写路径同点失效，计数与点赞状态仍实时合并）。
-- **A**：预热实测 **1500 prompts / 3.9s / 位图 117KB**；布隆实测误判率 ≤ 理论值 2 倍裕量；JMH add/mightContain ~750 ops/s；L1 命中 **51ns vs Redis 613.7µs（≈12,000×）**；**端到端 view@100 并发 TPS 229.7 → 354.5（+54.3%），p50 270→163.5ms**（`docs/benchmarks/kneepoint-report.md`）。
-
-### 5. 自研消息中间件 mini-mq（14 项测试全绿）
-- **S**：业务侧行为日志/通知与主链路耦合在进程内 @Async，无法独立演进；RabbitMQ 主链路不宜频繁变更。
-- **T**：从零实现存储引擎（分段 append-only + 长度前缀 + 启动恢复 + 尾部损坏截断）、消费语义（组游标/ack/nack/重试 3 次转死信/延迟消息 50ms 调度）、Netty 私有协议（半包粘包重组、requestId 并发匹配）。
-- **A**：**「确认」路径发布吞吐 1340.5 ops/s，高于同机 RabbitMQ publisher-confirm（734.0 ops/s，1.83×），且 mini-mq 为每消息 fsync 而 RabbitMQ confirm 不刷盘；fire-and-forget 差距 13.6× 已定位为刷盘策略差异（批量组提交为已标注的优化项）。详见 `docs/benchmarks/mq-comparison.md`。
-
-### 6. 两个自研 Spring Boot Starter，主项目 dogfooding
-- **S**：横切能力（锁/限流/幂等/布隆）散落业务代码；mini-mq 客户端使用门槛高。
-- **T**：`prompt-infra-spring-boot-starter`（AutoConfiguration + 属性 + SPI 设计：IP/用户维度经 RequestDimension 解耦，不依赖 servlet/security）；`mini-mq-spring-boot-starter`（Template + @MiniMqListener 容器 + 健康检查，默认关闭的渐进替换开关）。
-- **A**：主项目接入成本 = 一个依赖 + 零 Java 配置；行为日志/通知链路经 `prompt.mq.mode` 一键在本地/mini-MQ 间切换，broker 故障自动回退本地（单测覆盖）；starter 端到端测试全绿。
-
-### 7. RAG 检索质量：三通道矩阵 + 审计修正
-- **S**：关键词通道 websearch_to_tsquery 为 AND 语义，79/79 查询恒为空，hybrid ≈ dense。
-- **T**：修正为词元 OR 语义 → 审计发现裸 OR 注入噪声（hybrid 0.500 vs dense 0.5738，**负结果如实记录**）→ 升级为 IDF 过滤低区分度词（ts_stat 语料统计 + ndoc≥60% 截断 + 最多 6 词）。
-- **A**：dense 基线 R@5=0.5738 / MRR@5=0.4211；裸 OR hybrid=0.500（负结果）→ **IDF 过滤版 hybrid=0.5359（+7.2%，仍低于 dense -6.6%，如实记录）**；+BGE 重排 R@5=**0.6456**（代价 CPU ~14.4s/查询，线上不可用）；EXACT vs HNSW 质量持平、P95 ~20ms。查询行为分析：5/79 查询自动放弃关键词通道、被丢弃的正是 and/the/a/to/of。详见 `docs/benchmarks/rag-keyword-idf.md`。RAG 压测饱和点 ~69 TPS，瓶颈在本地嵌入推理。
-
-### 8. 企业级工程底座
-- 多模块 Maven + Docker Compose 全家桶 + OTel/Prometheus/Grafana/Tempo 可观测 + 统一异常/参数校验 + JWT 无状态认证 + 版本号乐观锁 + 幂等 confirm + 行为日志/通知异步解耦。
-
-## 基准数据速查
-
-| 实验 | 关键数字 | 报告 |
-|---|---|---|
-| JMH 微基准（9 项） | Redis INCR 914 vs MySQL UPDATE 181；滑动窗口 -20%；布隆 ~750 | `docs/benchmarks/jmh-report.md` |
-| mini-MQ vs RabbitMQ | confirms 路径 1.83×；fire-and-forget 13.6×（fsync 差异） | `docs/benchmarks/mq-comparison.md` |
-| 计数 A/B 全链路 | 20/50 并发 redis-mq vs direct-db | `docs/benchmarks/report-2026-08-rag-counting.md` |
-| 并发拐点实验 | view 峰值 230 TPS@100u，400u 塌陷；L1 两级缓存后 354.5 TPS（+54.3%） | `docs/benchmarks/kneepoint-report.md` |
-| RAG 检索矩阵 | dense R@5=0.5738；IDF-hybrid 0.5359（+7.2%）；+rerank 0.6456；chunk 消融 256→1600 | `docs/benchmarks/rag-keyword-idf.md` + `report-2026-08-rag-counting.md` |
-| RAG 压测 | TPS 饱和 ~69（嵌入瓶颈） | `docs/benchmarks/raw/p4_*.json` |
-
-所有数据可复现：JMH 命令见各报告；原始 JSON/CSV 在 `docs/benchmarks/raw/`。
-
-## 本地运行
+## 快速开始
 
 ```bash
-# 1. 基础设施（MySQL/Redis/RabbitMQ/OTel/Prometheus/Grafana/Tempo）
+# 1. 基础设施（MySQL/Redis/RabbitMQ）
 docker compose up -d mysql redis rabbitmq
-# 2. 全量构建（聚合多模块）
+# 2. 构建与测试
 ./mvnw clean test
-# 3. 启动主服务（dev：MySQL root/123456@ai_prompt、RabbitMQ admin/123456、Redis 6379）
+# 3. 启动主服务
 ./mvnw -pl app -am spring-boot:run -Dspring-boot.run.profiles=dev
-# 4. AI 服务（Ollama + pgvector，可选）
+# 4. 启动 AI 服务（可选，依赖 Ollama 与 pgvector）
 cd ai-service && .\.venv\Scripts\python.exe -m uvicorn app.main:app --port 8000
 ```
 
-接口文档：`http://localhost:8080/doc.html`（Knife4j）。
+接口文档（Knife4j）：`http://localhost:8080/doc.html`
 
-## 测试矩阵
+## 各模块测试
 
-| 模块 | 测试 | 状态 |
-|---|---|---|
-| app | 17 测试类（含缓存三防切片、MQ 降级、AI 网关） | `./mvnw -pl app -am test` 全绿 |
-| infra-starter | 20 个集成测试打真实 Redis（锁 7/限流 4/幂等 3/布隆 6） | 全绿 |
-| mini-mq | 14（存储 6/语义 7/端到端 1） | 全绿 |
-| mini-mq-spring-boot-starter | 1 端到端（真 broker 发布→@MiniMqListener 消费） | 全绿 |
-| ai-service | pytest 126+ | 全绿 |
-
-## 诚实边界
-
-- mini-mq 为学习型单机中间件：无分区/副本/集群/共识，README 明示，不以替代 RabbitMQ 为卖点。
-- 基准为单机 loopback 数据，用于相对比较，不作容量承诺；误差区间见原始 JSON。
-- RAG 重排为 CPU 推理，延迟高（中位 ~13.8s），已在报告中标注为取舍。
+```bash
+./mvnw -pl app -am test                          # 主服务
+./mvnw -pl infra-starter test                    # 基础设施 Starter（需本机 Redis）
+./mvnw -pl mini-mq test                          # 消息中间件核心
+./mvnw -pl mini-mq-spring-boot-starter -am test  # mini-mq Starter
+cd ai-service && .\.venv\Scripts\python.exe -m pytest tests -q
+```
