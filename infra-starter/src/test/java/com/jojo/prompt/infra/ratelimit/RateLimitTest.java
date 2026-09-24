@@ -1,6 +1,7 @@
 package com.jojo.prompt.infra.ratelimit;
 
 import com.jojo.prompt.infra.dimension.RequestDimension;
+import com.jojo.prompt.infra.support.RedisTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -72,7 +73,8 @@ class RateLimitTest {
     }
 
     static class RateLimitedService {
-        final AtomicInteger calls = new AtomicInteger();
+        // static：CGLIB 代理下字段访问指向代理实例（为 null），计数需类级共享
+        static final AtomicInteger calls = new AtomicInteger();
 
         @RateLimit(limit = 3, windowSeconds = 60, key = "svc", dim = RateLimit.Dimension.EXPR, expr = "#tag")
         public String call(String tag) {
@@ -95,23 +97,15 @@ class RateLimitTest {
 
     @BeforeAll
     static void checkRedis() {
-        StringRedisTemplate probe = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration("localhost", 6379)));
-        probe.afterPropertiesSet();
-        boolean reachable;
-        try {
-            probe.opsForValue().set("prompt:infra:rate:ping", "1", Duration.ofSeconds(5));
-            reachable = true;
-        } catch (Exception ex) {
-            reachable = false;
-        }
-        assumeTrue(reachable, "local Redis (localhost:6379) not available, skipping rate limit tests");
+        assumeTrue(RedisTestSupport.reachable("localhost", 6379),
+                "local Redis (localhost:6379) not available, skipping rate limit tests");
     }
 
     @AfterEach
     void cleanKeys() {
         ThreadLocalRequestDimension.IP.remove();
         ThreadLocalRequestDimension.USER.remove();
+        RateLimitedService.calls.set(0);
         redis.delete(List.of(
                 "prompt:infra:rate:svc:EXPR:t1",
                 "prompt:infra:rate:svc:EXPR:t2",

@@ -1,5 +1,6 @@
 package com.jojo.prompt.infra.idempotent;
 
+import com.jojo.prompt.infra.support.RedisTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -41,7 +42,8 @@ class IdempotentTest {
     }
 
     static class ConfirmService {
-        final AtomicInteger executed = new AtomicInteger();
+        // static：CGLIB 代理下字段访问指向代理实例（为 null），计数需类级共享
+        static final AtomicInteger executed = new AtomicInteger();
 
         @Idempotent(key = "confirm", expr = "#recordId")
         public String confirm(String recordId) {
@@ -63,21 +65,13 @@ class IdempotentTest {
 
     @BeforeAll
     static void checkRedis() {
-        StringRedisTemplate probe = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration("localhost", 6379)));
-        probe.afterPropertiesSet();
-        boolean reachable;
-        try {
-            probe.opsForValue().set("prompt:infra:idem:ping", "1", Duration.ofSeconds(5));
-            reachable = true;
-        } catch (Exception ex) {
-            reachable = false;
-        }
-        assumeTrue(reachable, "local Redis (localhost:6379) not available, skipping idempotent tests");
+        assumeTrue(RedisTestSupport.reachable("localhost", 6379),
+                "local Redis (localhost:6379) not available, skipping idempotent tests");
     }
 
     @AfterEach
     void cleanKeys() {
+        ConfirmService.executed.set(0);
         redis.delete(java.util.List.of(
                 "prompt:infra:idem:confirm:r1",
                 "prompt:infra:idem:confirm:r2",

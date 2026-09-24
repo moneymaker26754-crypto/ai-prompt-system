@@ -2,6 +2,7 @@ package com.jojo.prompt.infra.lock;
 
 import com.jojo.prompt.infra.PromptInfraProperties;
 import com.jojo.prompt.infra.metrics.InfraMetrics;
+import com.jojo.prompt.infra.support.RedisTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,7 +21,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,17 +42,9 @@ class RedisLockClientTest {
 
     @BeforeAll
     static void connect() {
-        redis = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration("localhost", 6379)));
-        redis.afterPropertiesSet();
-        boolean reachable;
-        try {
-            redis.opsForValue().set("prompt:infra:test:ping", "1", Duration.ofSeconds(5));
-            reachable = true;
-        } catch (Exception ex) {
-            reachable = false;
-        }
-        assumeTrue(reachable, "local Redis (localhost:6379) not available, skipping lock integration tests");
+        assumeTrue(RedisTestSupport.reachable("localhost", 6379),
+                "local Redis (localhost:6379) not available, skipping lock integration tests");
+        redis = RedisTestSupport.pooledTemplate("localhost", 6379);
     }
 
     @BeforeEach
@@ -107,13 +99,21 @@ class RedisLockClientTest {
     }
 
     @Test
-    void unlockByNonOwnerIsRejected() {
+    void unlockByNonOwnerIsRejected() throws Exception {
         assertTrue(client.tryLock("test-key"));
-        assertThrows(IllegalStateException.class, () -> {
-            Thread other = new Thread(() -> client.unlock("test-key"));
-            other.start();
-            other.join();
-        }, "非持有线程释放应被拒绝");
+        java.util.concurrent.atomic.AtomicReference<Throwable> captured =
+                new java.util.concurrent.atomic.AtomicReference<>();
+        Thread other = new Thread(() -> {
+            try {
+                client.unlock("test-key");
+            } catch (Throwable t) {
+                captured.set(t);
+            }
+        });
+        other.start();
+        other.join();
+        assertTrue(captured.get() instanceof IllegalStateException,
+                "非持有线程释放应被拒绝，实际捕获: " + captured.get());
         assertTrue(redis.hasKey("lock:test-key"), "锁不应被非持有者误删");
         client.unlock("test-key");
     }
@@ -177,20 +177,14 @@ class RedisLockClientTest {
     }
 
     @Test
-    void onlyOneThreadWinsUnderContention() throws Exception {
+    void contendersAllFailWhileLockHeld() throws Exception {
+        // 确定性设计：主线程全程持锁，20 个竞争者必须全部失败（互斥性的直接证据）
+        assertTrue(client.tryLock("contend"));
         int threads = 20;
         ExecutorService pool = Executors.newFixedThreadPool(threads);
         List<Callable<Boolean>> tasks = new ArrayList<>();
-        AtomicInteger winners = new AtomicInteger();
         for (int i = 0; i < threads; i++) {
-            tasks.add(() -> {
-                if (client.tryLock("contend")) {
-                    winners.incrementAndGet();
-                    client.unlock("contend");
-                    return true;
-                }
-                return false;
-            });
+            tasks.add(() -> client.tryLock("contend"));
         }
         List<Future<Boolean>> futures = pool.invokeAll(tasks);
         long acquired = futures.stream().filter(f -> {
@@ -201,7 +195,8 @@ class RedisLockClientTest {
             }
         }).count();
         pool.shutdownNow();
-        assertEquals(1, acquired, "20 线程争抢同一把锁应恰好 1 个成功");
-        assertEquals(1, winners.get());
+        assertEquals(0, acquired, "持锁期间 20 个竞争者应全部失败");
+        client.unlock("contend");
+        assertFalse(redis.hasKey("lock:contend"));
     }
 }

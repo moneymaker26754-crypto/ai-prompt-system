@@ -45,6 +45,12 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- 测试连接池：避免 pipeline 压测在 Windows 上耗尽临时端口 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

@@ -1,5 +1,6 @@
 package com.jojo.prompt.infra.bloom;
 
+import com.jojo.prompt.infra.support.RedisTestSupport;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,17 +28,9 @@ class RedisBloomFilterTest {
 
     @BeforeAll
     static void connect() {
-        redis = new StringRedisTemplate(new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration("localhost", 6379)));
-        redis.afterPropertiesSet();
-        boolean reachable;
-        try {
-            redis.opsForValue().set("prompt:infra:bloom:ping", "1", Duration.ofSeconds(5));
-            reachable = true;
-        } catch (Exception ex) {
-            reachable = false;
-        }
-        assumeTrue(reachable, "local Redis (localhost:6379) not available, skipping bloom integration tests");
+        assumeTrue(RedisTestSupport.reachable("localhost", 6379),
+                "local Redis (localhost:6379) not available, skipping bloom integration tests");
+        redis = RedisTestSupport.pooledTemplate("localhost", 6379);
     }
 
     @BeforeEach
