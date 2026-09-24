@@ -33,10 +33,10 @@
 
 ## Current Checkpoint
 
-- 活跃切片：P6.1（JMH 运行准备）+ P3/P6.3 两个子代理并行。
-- 分支/HEAD：master @ f938a7f + 未提交（benchmarks 模块、docs/benchmarks 资产、worklog）。
-- 阻塞：无。
-- 关键资产：兄弟仓库 D:\Code\java_program\ai-prompt-benchmark 的历史数据（RAG 矩阵/计数 A/B/压测）已收编 docs/benchmarks/；历史结论 dense R@5=0.5738、裸 OR hybrid=0.500（负结果，已记录），IDF 改进在途。
+- 活跃切片：等待 RAG 子代理 a3d9b9ad 的最终 IDF 矩阵报告（rerank CPU 推理慢），落地后补 rag-keyword-idf.md + README 引用的最终数字。
+- **已推送 origin/master @ 2d0cf20**（2026-09-24 13:22 验证 ls-remote 一致）。
+- 最终回归证据：`mvnw clean test` FINAL_REGRESSION=0（五模块）；pytest 126 passed（独立复跑验证）。
+- 阻塞：无。剩余 = RAG 报告整合 + 最终亮点清单总结。
 - 经验教训（重要，已记入代码）：根 pom pluginManagement 的 maven-compiler-plugin 配置里加 `<parameters>` 会破坏与 spring-boot-parent 的配置合并、导致 Lombok 注解处理器失效——参数名功能本就由 `maven.compiler.parameters` 提供，勿再在 plugin 配置里重复声明。
 - 设计决策记录（供 resume/README 引用）：
   - confirm 幂等用 SETNX 占位即可串行化并发，因此不再叠加 RedisLock（避免冗余，AGENTS 简化原则）；
