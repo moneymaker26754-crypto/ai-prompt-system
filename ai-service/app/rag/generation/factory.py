@@ -5,7 +5,7 @@ from app.rag.generation.answer_generator import LangChainAnswerGenerator
 from app.rag.generation.citation_validator import CitationValidator
 from app.rag.generation.context_builder import ContextBuilder
 from app.rag.generation.grounded_answer_service import GroundedAnswerService
-from app.rag.generation.langchian_retriever import ProjectRetriever
+from app.rag.generation.langchain_retriever import ProjectRetriever
 from app.rag.generation.model_factory import create_chat_model
 from app.rag.retrieval.retrieval_service import RetrievalService
 

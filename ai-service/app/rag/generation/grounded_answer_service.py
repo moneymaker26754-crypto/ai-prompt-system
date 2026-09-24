@@ -1,7 +1,7 @@
 from app.rag.generation.answer_generator import LangChainAnswerGenerator
 from app.rag.generation.citation_validator import CitationValidator, CitationValidationError
 from app.rag.generation.context_builder import ContextBuilder, BuiltContext
-from app.rag.generation.langchian_retriever import ProjectRetriever
+from app.rag.generation.langchain_retriever import ProjectRetriever
 from app.rag.generation.schemas import RagAnswerResponse, CitationResponse
 
 
